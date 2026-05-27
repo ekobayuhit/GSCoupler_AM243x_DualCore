@@ -403,16 +403,6 @@ void EI_APP_TASK_main(void* pvTaskArg_p)
 
     APP_SInstance_t* pAppInstance = (APP_SInstance_t*) pvTaskArg_p;
 
-    // int count_wait = 0;
-    // while(!isMaster_running()){
-    //     DebugP_log("[EIP] Waiting CANopen Master running and complete the scanning IO process...%d \r\n", count_wait++);
-    //     ClockP_sleep(1);
-    // }
-    // while(getNumIOSlave() == 0){
-    //     DebugP_log("[EIP] No IO Slave found, EIP not start. Please Check the IO slave and Power Cycle Coupler !\r\n");
-    //     ClockP_sleep(1);
-    // }
-
     CMN_BOARD_init();
 
     if(DRV_COMMON_MUTEX_eERR_NOERROR != DRV_COMMON_Mutex_init())

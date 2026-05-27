@@ -200,7 +200,7 @@
                                 <option id="com.ti.ccstudio.buildDefinitions.TMS470_TICLANG_4.0.compilerID.MFPU.1320286784" superClass="com.ti.ccstudio.buildDefinitions.TMS470_TICLANG_4.0.compilerID.MFPU" value="com.ti.ccstudio.buildDefinitions.TMS470_TICLANG_4.0.compilerID.MFPU.vfpv3-d16" valueType="enumerated"/>
                                 <option id="com.ti.ccstudio.buildDefinitions.TMS470_TICLANG_4.0.compilerID.ENDIAN_NESS__BIG_LITTLE.651604300" superClass="com.ti.ccstudio.buildDefinitions.TMS470_TICLANG_4.0.compilerID.ENDIAN_NESS__BIG_LITTLE" value="com.ti.ccstudio.buildDefinitions.TMS470_TICLANG_4.0.compilerID.ENDIAN_NESS__BIG_LITTLE.MLITTLE_ENDIAN" valueType="enumerated"/>
                                 <option id="com.ti.ccstudio.buildDefinitions.TMS470_TICLANG_4.0.compilerID.SELECT_PROCESSOR_MODE__ARM_THUMB.946058748" superClass="com.ti.ccstudio.buildDefinitions.TMS470_TICLANG_4.0.compilerID.SELECT_PROCESSOR_MODE__ARM_THUMB" value="com.ti.ccstudio.buildDefinitions.TMS470_TICLANG_4.0.compilerID.SELECT_PROCESSOR_MODE__ARM_THUMB.MTHUMB" valueType="enumerated"/>
-                                <option id="com.ti.ccstudio.buildDefinitions.TMS470_TICLANG_4.0.compilerID.OPT_LEVEL.1430102547" superClass="com.ti.ccstudio.buildDefinitions.TMS470_TICLANG_4.0.compilerID.OPT_LEVEL" value="com.ti.ccstudio.buildDefinitions.TMS470_TICLANG_4.0.compilerID.OPT_LEVEL.0" valueType="enumerated"/>
+                                <option id="com.ti.ccstudio.buildDefinitions.TMS470_TICLANG_4.0.compilerID.OPT_LEVEL.1430102547" superClass="com.ti.ccstudio.buildDefinitions.TMS470_TICLANG_4.0.compilerID.OPT_LEVEL" value="com.ti.ccstudio.buildDefinitions.TMS470_TICLANG_4.0.compilerID.OPT_LEVEL.s" valueType="enumerated"/>
                                 <option id="com.ti.ccstudio.buildDefinitions.TMS470_TICLANG_4.0.compilerID.INCLUDE_PATH.1007747257" superClass="com.ti.ccstudio.buildDefinitions.TMS470_TICLANG_4.0.compilerID.INCLUDE_PATH" valueType="includePath">
                                     <listOptionValue value="${SYSCONFIG_TOOL_INCLUDE_PATH}"/>
                                     <listOptionValue value="${COM_TI_INDUSTRIAL_COMMUNICATIONS_SDK_AM243X_INCLUDE_PATH}"/>
@@ -227,11 +227,9 @@
                                     <listOptionValue value="${workspace_loc:/${ProjName}/os/freertos}"/>
                                     <listOptionValue value="${workspace_loc:/${ProjName}/custom}"/>
                                     <listOptionValue value="${workspace_loc:/${ProjName}/drivers}"/>
-                                    <listOptionValue value="${workspace_loc:/${ProjName}/canopenmaster/inc}"/>
-                                    <listOptionValue value="${workspace_loc:/${ProjName}/coupler_master}"/>
                                     <listOptionValue value="${workspace_loc:/${ProjName}}"/>
-                                    <listOptionValue value="${workspace_loc:/${ProjName}/driver}"/>
                                     <listOptionValue value="${workspace_loc:/${ProjName}/webserver}"/>
+                                    <listOptionValue value="C:/Users/ekoba/workspace_ccstheia_dualcore/Core0_CANopen_AM243"/>
                                 </option>
                                 <option id="com.ti.ccstudio.buildDefinitions.TMS470_TICLANG_4.0.compilerID.DEFINE.1155630406" superClass="com.ti.ccstudio.buildDefinitions.TMS470_TICLANG_4.0.compilerID.DEFINE" valueType="definedSymbols">
                                     <listOptionValue value="${SYSCONFIG_TOOL_SYMBOLS}"/>
@@ -274,8 +272,8 @@
                                     <listOptionValue value="icss_emac.am243x.r5f.ti-arm-clang.freertos.debug.lib"/>
                                     <listOptionValue value="icss_timesync.am243x.r5f.ti-arm-clang.freertos.debug.lib"/>
                                     <listOptionValue value="ethernetip_adapter_rgmii_icss_fwhal.am243x.r5f.ti-arm-clang.debug.lib"/>
-                                    <listOptionValue value="ethernetip_adapter_lwip_contrib.am243x.r5f.ti-arm-clang.debug.lib"/>
-                                    <listOptionValue value="ethernetip_adapter_lwip_freertos.am243x.r5f.ti-arm-clang.debug.lib"/>
+                                    <listOptionValue value="ethernetip_adapter_lwip_contrib.am243x.r5f.ti-arm-clang.release.lib"/>
+                                    <listOptionValue value="ethernetip_adapter_lwip_freertos.am243x.r5f.ti-arm-clang.release.lib"/>
                                     <listOptionValue value="ethernetipadapter_rgmii.am243x.r5f.ti-arm-clang.release.lib"/>
                                     <listOptionValue value="libc.a"/>
                                     <listOptionValue value="libsysbm.a"/>
@@ -319,6 +317,9 @@
                             </tool>
                         </toolChain>
                     </folderInfo>
+                    <sourceEntries>
+                        <entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+                    </sourceEntries>
                 </configuration>
             </storageModule>
             <storageModule moduleId="org.eclipse.cdt.core.externalSettings"/>

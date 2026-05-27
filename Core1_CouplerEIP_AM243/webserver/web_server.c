@@ -55,8 +55,8 @@
 #include "lwip/errno.h"
 
 #include "cmn_cpu_api.h"
-#include "Master.h"
-#include "IOCoupler.h"
+#include "FWVER.h"
+#include "ipc_shareMem.h"
 
 /*!
  *  \brief Application Web server task's stack size.
@@ -65,7 +65,7 @@
 
 #define MAX_HTML_SIZE 8192
 /* Extern */
-extern IOCoupler_Device IOCoupler_Devices;
+extern volatile ipc_data_t gSharedMem;
 extern const unsigned char gsp_favicon_ico[];
 extern const unsigned int gsp_favicon_ico_len;
 extern int generate_io_table(char *html_out, int max_size, IOCoupler_Device *dev);
@@ -282,16 +282,16 @@ static int WEB_SERVER_processGetAndRespond(int clientFd_p, const char *const pBu
         sprintf(jsonBuf, page_iomap, MASTER_TYPE, MASTER_FW_VERSION);
         ret |= send(clientFd_p, jsonBuf, strlen(jsonBuf), 0);
     
-        int svg_image_len = sizeof(svg_image);
-        int totalSent = 0;
-        while (totalSent < svg_image_len)
-        {
-            int sent = send(clientFd_p, svg_image + totalSent,
-                            svg_image_len - totalSent, 0);
-            if (sent <= 0)
-                break;
-            totalSent += sent;
-        }
+        // int svg_image_len = sizeof(svg_image);
+        // int totalSent = 0;
+        // while (totalSent < svg_image_len)
+        // {
+        //     int sent = send(clientFd_p, svg_image + totalSent,
+        //                     svg_image_len - totalSent, 0);
+        //     if (sent <= 0)
+        //         break;
+        //     totalSent += sent;
+        // }
 
         ret |= send(clientFd_p, html_bottom, strlen(html_bottom), 0);
     }
@@ -472,7 +472,7 @@ static int WEB_SERVER_processGetAndRespond(int clientFd_p, const char *const pBu
     }
     else if ((strncmp(&pBuf_p[0], "/io-data", 8) == 0))
     {
-        int len = generate_io_table(jsonBuf, MAX_HTML_SIZE, &IOCoupler_Devices);
+        int len = generate_io_table(jsonBuf, MAX_HTML_SIZE, &gSharedMem.IOCoupler_Devices);
 
         if (len > 0)
         {

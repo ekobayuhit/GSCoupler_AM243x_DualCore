@@ -8,7 +8,20 @@
             "projectInfo": {
                 "name": "Core0_CANopen_AM243",
                 "resourceId": "/Core0_CANopen_AM243"
-            }
+            },
+            "connections": [
+                {
+                    "name": "Texas Instruments XDS110 USB Debug Probe",
+                    "cores": [
+                        {
+                            "name": "MAIN_Cortex_R5_0_0",
+                            "debuggerSettings": {
+                                "data": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\" ?>\n<PropertyValues/>\n"
+                            }
+                        }
+                    ]
+                }
+            ]
         },
         {
             "name": "Core1_CouplerEIP_AM243",

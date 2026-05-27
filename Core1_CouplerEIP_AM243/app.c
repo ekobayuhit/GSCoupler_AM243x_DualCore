@@ -71,6 +71,7 @@
 
 #include "web_server.h"
 
+#include "ipc_shareMem.h"
 #include "app_task.h"
 #include "app.h"
 
@@ -145,7 +146,7 @@ int main(
     pCfg->drivers.app.pruicss.ethPhy1Id = CFG_BOARD_PRU_ICSS_ETHPHY_1_INSTANCE;
 
     /* Application UART driver configuration. */
-    pCfg->drivers.app.uart.instance = CFG_BOARD_UART_INSTANCE;
+    // pCfg->drivers.app.uart.instance = CONFIG_UART0;
 
     /* Application LED's driver configuration */
 #ifndef ENABLE_INTERCORE_TUNNELING
@@ -203,6 +204,8 @@ int main(
     {
         goto laError;
     }
+    
+    init_ipc_sharemem();
 
     OSAL_registerErrorHandler (EI_APP_TASK_osErrorHandlerCb);
 
@@ -211,10 +214,6 @@ int main(
 #endif
     
     CMN_APP_mainCreate(EI_APP_TASK_main, &appInstance_s, pCfg->application.taskPrio);
-
-    /* Integrate CANopen Master */
-    master_main();
-    /**/
 
     OSAL_startOs ();
 

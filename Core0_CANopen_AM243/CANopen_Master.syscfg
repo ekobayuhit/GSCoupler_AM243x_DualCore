@@ -9,6 +9,7 @@
 /**
  * Import the modules used in this configuration.
  */
+const ipc             = scripting.addModule("/drivers/ipc/ipc");
 const mcan            = scripting.addModule("/drivers/mcan/mcan", {}, false);
 const mcan1           = mcan.addInstance();
 const debug_log       = scripting.addModule("/kernel/dpl/debug_log");
@@ -41,6 +42,11 @@ const section11       = section.addInstance();
 /**
  * Write custom configuration values to the imported modules.
  */
+ipc.r5fss1_0 = "NONE";
+ipc.r5fss1_1 = "NONE";
+ipc.m4fss0_0 = "NONE";
+ipc.r5fss0_1 = "notify";
+
 mcan1.$name             = "CONFIG_MCAN0";
 mcan1.dataRatePrescalar = 3;
 mcan1.dataTimeSeg1      = 15;
@@ -52,12 +58,10 @@ const mcan_v0_template1 = mcan_v0_template.addInstance({}, false);
 mcan_v0_template1.$name = "drivers_mcan_v0_mcan_v0_template0";
 mcan1.child             = mcan_v0_template1;
 
-debug_log.enableUartLog            = true;
-debug_log.enableMemLog             = true;
-debug_log.enableCssLog             = false;
-debug_log.uartLog.$name            = "CONFIG_UART_CONSOLE";
-debug_log.uartLog.UART.$assign     = "USART0";
-debug_log.uartLog.UART.RXD.$assign = "UART0_RXD";
+debug_log.enableMemLog  = true;
+debug_log.enableCssLog  = false;
+debug_log.enableUartLog = true;
+debug_log.uartLog.$name = "CONFIG_UART0";
 
 const uart_v0_template  = scripting.addModule("/drivers/uart/v0/uart_v0_template", {}, false);
 const uart_v0_template1 = uart_v0_template.addInstance({}, false);
@@ -113,30 +117,30 @@ region1.memory_region[3].size               = 0x8000;
 region1.memory_region[4].$name              = "MSRAM";
 region1.memory_region[4].auto               = false;
 region1.memory_region[4].manualStartAddress = 0x70080000;
-region1.memory_region[4].size               = 0x100000;
+region1.memory_region[4].size               = 0x48000;
 region1.memory_region[5].type               = "FLASH";
 region1.memory_region[5].$name              = "FLASH";
 region1.memory_region[5].auto               = false;
 region1.memory_region[5].manualStartAddress = 0x60100000;
 region1.memory_region[5].size               = 0x80000;
 region1.memory_region[6].$name              = "USER_SHM_MEM";
-region1.memory_region[6].auto               = false;
 region1.memory_region[6].manualStartAddress = 0x701D0000;
-region1.memory_region[6].size               = 0x180;
 region1.memory_region[6].isShared           = true;
-region1.memory_region[6].shared_cores       = ["m4fss0-0","r5fss0-1","r5fss1-0","r5fss1-1"];
-region1.memory_region[7].auto               = false;
-region1.memory_region[7].manualStartAddress = 0x701D0180;
-region1.memory_region[7].size               = 0x3E80;
+region1.memory_region[6].size               = 0x4000;
+region1.memory_region[6].auto               = false;
+region1.memory_region[6].shared_cores       = ["r5fss0-1"];
 region1.memory_region[7].$name              = "LOG_SHM_MEM";
 region1.memory_region[7].isShared           = true;
-region1.memory_region[7].shared_cores       = ["m4fss0-0","r5fss0-1","r5fss1-0","r5fss1-1"];
+region1.memory_region[7].size               = 0x4000;
+region1.memory_region[7].auto               = false;
+region1.memory_region[7].manualStartAddress = 0x701D4000;
+region1.memory_region[7].shared_cores       = ["r5fss0-1"];
 region1.memory_region[8].auto               = false;
-region1.memory_region[8].manualStartAddress = 0x701D4000;
-region1.memory_region[8].size               = 0xC000;
 region1.memory_region[8].$name              = "RTOS_NORTOS_IPC_SHM_MEM";
 region1.memory_region[8].isShared           = true;
 region1.memory_region[8].shared_cores       = ["m4fss0-0","r5fss0-1","r5fss1-0","r5fss1-1"];
+region1.memory_region[8].manualStartAddress = 0x701D8000;
+region1.memory_region[8].size               = 0x8000;
 
 section1.$name                        = "Vector Table";
 section1.load_memory                  = "R5F_VECS";
@@ -263,4 +267,6 @@ section11.output_section[0].alignment = 0;
  */
 mcan1.MCAN.RX.$suggestSolution              = "MCAN0_RX";
 mcan1.MCAN.TX.$suggestSolution              = "MCAN0_TX";
+debug_log.uartLog.UART.$suggestSolution     = "USART0";
+debug_log.uartLog.UART.RXD.$suggestSolution = "UART0_RXD";
 debug_log.uartLog.UART.TXD.$suggestSolution = "UART0_TXD";

@@ -36,7 +36,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "mbs_app.h"
 #endif
 
-extern IOCoupler_Device IOCoupler_Devices;
+extern IO_RuntimeInfo IO_slave_data[MAX_IO_DEVICES];
+extern volatile ipc_data_t gSharedMem;
 IO_SlaveInfo *Slaveconfig;
 
 // Step counts number of times ConfigureSlaveNode is called
@@ -54,9 +55,6 @@ void RecvPDOLoop(void *args);
 #if (ACTIVE_PROTOCOL == IOCOUPLER_MODBUSTCP)
 extern void appMain(void *args);
 extern MbsStorage mbs_app_storage;
-#elif (ACTIVE_PROTOCOL == IOCOUPLER_ETHERNETIP)
-uint8_t gInputProcessImage[MAX_INPUT_SIZE_BYTES];   // T -> O (Device → PLC)
-uint8_t gOutputProcessImage[MAX_OUTPUT_SIZE_BYTES]; // O -> T (PLC → Device)
 #endif
 
 #define MAIN_TASK_SIZE   	2048U
@@ -64,7 +62,6 @@ uint8_t gOutputProcessImage[MAX_OUTPUT_SIZE_BYTES]; // O -> T (PLC → Device)
 #define CAN_RX_TASK_SIZE    4096U
 #define RPDO_TASK_SIZE    	4096U
 #define TPDO_TASK_SIZE    	4096U
-#define INDSCOM_TASK_SIZE	16384U
 
 StackType_t gMainTaskStack[MAIN_TASK_SIZE] __attribute__((aligned(32)));
 StaticTask_t gMainTaskObj;
@@ -81,23 +78,13 @@ StaticTask_t gRPDOTaskObj;
 StackType_t gTPDOTaskStack[TPDO_TASK_SIZE] __attribute__((aligned(32)));
 StaticTask_t gTPDOTaskObj;
 
-#if (ACTIVE_PROTOCOL != IOCOUPLER_COMM_NONE)
-StackType_t gCOMTaskStack[INDSCOM_TASK_SIZE] __attribute__((aligned(32)));
-StaticTask_t gCOMTaskObj;
-#endif
-
 task_t task[] =
 {
-    {TASK_MAIN, 1, MAIN_TASK_SIZE,  gMainTaskStack,  &gMainTaskObj,  NULL, master_loop},
-    {TASK_CAN_TIMER, configMAX_PRIORITIES-2, TIMER_TASK_SIZE, gTimerTaskStack, &gTimerTaskObj, NULL, TimerTaskLoop},
+    {TASK_MAIN, configMAX_PRIORITIES-10, MAIN_TASK_SIZE,  gMainTaskStack,  &gMainTaskObj,  NULL, master_loop},
+    {TASK_CAN_TIMER, configMAX_PRIORITIES-5, TIMER_TASK_SIZE, gTimerTaskStack, &gTimerTaskObj, NULL, TimerTaskLoop},
 	{TASK_CAN_RX, configMAX_PRIORITIES-1, CAN_RX_TASK_SIZE,  gRXTaskStack,  &gRXTaskObj,  NULL, canRecv_Task},
-    {TASK_CAN_RPDO, configMAX_PRIORITIES-1, RPDO_TASK_SIZE,  gRPDOTaskStack,  &gRPDOTaskObj,  NULL, RecvPDOLoop},
-#if (ACTIVE_PROTOCOL != IOCOUPLER_ECAT)
-    {TASK_CAN_TPDO, configMAX_PRIORITIES-2, TPDO_TASK_SIZE,  gTPDOTaskStack,  &gTPDOTaskObj,  NULL, SendPDOLoop}
-#endif
-#if (ACTIVE_PROTOCOL == IOCOUPLER_MODBUSTCP)
-    ,{TASK_INDS_COM, 5, INDSCOM_TASK_SIZE, gCOMTaskStack, &gCOMTaskObj, NULL, appMain}
-#endif
+    {TASK_CAN_RPDO, configMAX_PRIORITIES-2, RPDO_TASK_SIZE,  gRPDOTaskStack,  &gRPDOTaskObj,  NULL, RecvPDOLoop},
+    {TASK_CAN_TPDO, configMAX_PRIORITIES-3, TPDO_TASK_SIZE,  gTPDOTaskStack,  &gTPDOTaskObj,  NULL, SendPDOLoop}
 };
 
 static uint8_t sys_cmd = SYS_NO_EVENT;
@@ -114,6 +101,7 @@ static void master_stop_tasks(void);
 static void master_rescan(void);
 static void stop_master(void);
 static void print_master_info(void);
+static void print_all_io_values(void);
 static void master_reset_conf_step(CO_Data* d);
 static void master_reset_conf_step_slave(UNS32 nodeId);
 static void master_set_IOerror(IO_SlaveInfo *slaveInfo, uint32_t error_type, uint32_t error_code);
@@ -121,9 +109,9 @@ static void master_set_IOerror(IO_SlaveInfo *slaveInfo, uint32_t error_type, uin
 /***************************  PDO Task  *****************************************/
 int find_slave_index_by_nodeId(uint8_t nodeId)
 {
-    for (int i = 0; i < IOCoupler_Devices.numberOfSlaves; i++)
+    for (int i = 0; i < gSharedMem.IOCoupler_Devices.numberOfSlaves; i++)
     {
-        if (IOCoupler_Devices.slaveInfo[i].nodeId == nodeId)
+        if (gSharedMem.IOCoupler_Devices.slaveInfo[i].nodeId == nodeId)
             return i;
     }
     return -1;
@@ -136,109 +124,100 @@ bool isMaster_running(void){
 }
 
 uint8_t getNumIOSlave(void){
-	return IOCoupler_Devices.numberOfSlaves;
+	return gSharedMem.IOCoupler_Devices.numberOfSlaves;
 }
 
-#if (ACTIVE_PROTOCOL == IOCOUPLER_MODBUSTCP)
-void sync_mb_coil(void)
+void UpdateInputProcessImage(void)
 {
-    for (int i = 0; i < IOCoupler_Devices.numberOfSlaves; i++)
+    app_ipc_sharemem_lock();
+    for (int i = 0; i < gSharedMem.IOCoupler_Devices.numberOfSlaves; i++)
     {
-        // Only DO modules
-        if (IOCoupler_Devices.slaveInfo[i].productCode != IO_DEVICE_TYPE_DO16)
-            continue;
+        IO_SlaveInfo *s = (IO_SlaveInfo *)&gSharedMem.IOCoupler_Devices.slaveInfo[i];
 
-        // Safety checks
-        if (IOCoupler_Devices.slaveInfo[i].d_ptr == NULL)
-            continue;
-
-        if (IOCoupler_Devices.slaveInfo[i].output_index == 0)
-            continue;
-		
-		int pdonum = IOCoupler_Devices.slaveInfo[i].output_index - 1;
-
-		if (pdonum >= MAX_IO_DEVICES)
-					continue;
-				
-        int bit_offset = (IOCoupler_Devices.slaveInfo[i].output_index - 1) * 16;
-
-        uint16_t do_val = 0;
-
-        for (int bit = 0; bit < 16; bit++)
+        /* =========================
+         * DIGITAL INPUT
+         * ========================= */
+        if (s->productCode == IO_DEVICE_TYPE_DI16)
         {
-            int coil_index = bit_offset + bit;
-
-            uint8_t coil_byte = mbs_app_storage.Coils[coil_index >> 3];
-            uint8_t mask      = (1U << (coil_index & 0x07));
-
-            if (coil_byte & mask)
+            if (IO_slave_data[i].d_ptr != NULL)
             {
-                do_val |= (1U << bit);
+                memcpy((void *)&gSharedMem.buff_in[s->offset_index],
+                       IO_slave_data[i].d_ptr,
+                       IO_DIGITAL_MODULE_BYTESIZE);
             }
         }
 
-        memcpy(IOCoupler_Devices.slaveInfo[i].d_ptr, &do_val, sizeof(uint16_t));
-		uint8_t res = sendOnePDOevent(&Master_Data, pdonum);
-		// DebugP_log(
-		// 			"PDO_LOOP DO res=%d nodeId=0x%02X pdonum=%d val=0x%04X\r\n",
-		// 			res,
-		// 			IOCoupler_Devices.slaveInfo[i].nodeId,
-		// 			pdonum,
-		// 			*(UNS16 *)IOCoupler_Devices.slaveInfo[i].d_ptr
-		// 		);
-    }
-}
-
-void sync_mb_di(void)
-{
-    for (int i = 0; i < IOCoupler_Devices.numberOfSlaves; i++)
-    {
-        // Only DI modules
-        if (IOCoupler_Devices.slaveInfo[i].productCode != IO_DEVICE_TYPE_DI16)
-            continue;
-
-        // Safety checks
-        if (IOCoupler_Devices.slaveInfo[i].d_ptr == NULL)
-            continue;
-
-        if (IOCoupler_Devices.slaveInfo[i].input_index == 0)
-            continue;
-
-        int bit_offset = (IOCoupler_Devices.slaveInfo[i].input_index - 1) * 16;
-
-        uint16_t di_val = 0;
-
-        // Read DI value
-        memcpy(&di_val, IOCoupler_Devices.slaveInfo[i].d_ptr, sizeof(uint16_t));
-
-        for (int bit = 0; bit < 16; bit++)
+        /* =========================
+         * ANALOG INPUT
+         * ========================= */
+        else if ((s->productCode == IO_DEVICE_TYPE_AIC8) ||
+                 (s->productCode == IO_DEVICE_TYPE_AIV8))
         {
-            int coil_index = bit_offset + bit;
-
-            uint8_t *coil_byte = &mbs_app_storage.DiscreteCoils[coil_index >> 3];
-            uint8_t  mask      = (1U << (coil_index & 0x07));
-
-            if (di_val & (1U << bit))
+            for (int ch = 0; ch < IO_ANALOG_CHANNEL_NUM; ch++)
             {
-                *coil_byte |= mask;
-            }
-            else
-            {
-                *coil_byte &= ~mask;
+                if (IO_slave_data[i].a_ptr[ch] != NULL)
+                {
+                    memcpy((void *)&gSharedMem.buff_in[s->offset_index + (ch * 2)],
+                           IO_slave_data[i].a_ptr[ch],
+                           IO_ANALOG_BYTES_PER_CHANNEL);
+                }
             }
         }
     }
-}
-#endif
 
-void BuildProcessImage()
+    app_ipc_sharemem_unlock();
+}
+
+void UpdateOutputModules(void)
+{	
+    app_ipc_sharemem_lock();
+
+    for (int i = 0; i < gSharedMem.IOCoupler_Devices.numberOfSlaves; i++)
+    {
+        IO_SlaveInfo *s = (IO_SlaveInfo *)&gSharedMem.IOCoupler_Devices.slaveInfo[i];
+
+        /* =========================
+         * DIGITAL OUTPUT
+         * ========================= */
+        if (s->productCode == IO_DEVICE_TYPE_DO16)
+        {
+            if (IO_slave_data[i].d_ptr != NULL)
+            {
+                memcpy(IO_slave_data[i].d_ptr,
+                       (const void *)&gSharedMem.buff_out[s->offset_index],
+                       IO_DIGITAL_MODULE_BYTESIZE);
+            }
+        }
+
+        /* =========================
+         * ANALOG OUTPUT
+         * ========================= */
+        else if ((s->productCode == IO_DEVICE_TYPE_AOC8) ||
+                 (s->productCode == IO_DEVICE_TYPE_AOV8))
+        {
+            for (int ch = 0; ch < IO_ANALOG_CHANNEL_NUM; ch++)
+            {
+                if (IO_slave_data[i].a_ptr[ch] != NULL)
+                {
+                    memcpy(IO_slave_data[i].a_ptr[ch],
+                           (const void *)&gSharedMem.buff_out[s->offset_index + (ch * 2)],
+                           IO_ANALOG_BYTES_PER_CHANNEL);
+                }
+            }
+        }
+    }
+    app_ipc_sharemem_unlock();
+}
+
+void BuildProcessImage(void)
 {
     uint16_t inOffset = 0;
     uint16_t outOffset = 0;
 
-    for (int i = 0; i < IOCoupler_Devices.numberOfSlaves; i++)
+	app_ipc_sharemem_lock();
+    for (int i = 0; i < gSharedMem.IOCoupler_Devices.numberOfSlaves; i++)
     {
-        IO_SlaveInfo *s = &IOCoupler_Devices.slaveInfo[i];
+        IO_SlaveInfo *s = (IO_SlaveInfo *)&gSharedMem.IOCoupler_Devices.slaveInfo[i];
 
         switch (s->productCode)
         {
@@ -265,99 +244,92 @@ void BuildProcessImage()
                 break;
         }
     }
+	app_ipc_sharemem_unlock();
 }
 
-#if (ACTIVE_PROTOCOL == IOCOUPLER_ETHERNETIP)
-
-void UpdateInputProcessImage(void)
+#if (ACTIVE_PROTOCOL == IOCOUPLER_MODBUSTCP)
+void sync_mb_coil(void)
 {
-    for (int i = 0; i < IOCoupler_Devices.numberOfSlaves; i++)
+    for (int i = 0; i < gSharedMem.IOCoupler_Devices.numberOfSlaves; i++)
     {
-        IO_SlaveInfo *s = &IOCoupler_Devices.slaveInfo[i];
+        // Only DO modules
+        if (gSharedMem.IOCoupler_Devices.slaveInfo[i].productCode != IO_DEVICE_TYPE_DO16)
+            continue;
 
-        /* =========================
-         * DIGITAL INPUT
-         * ========================= */
-        if (s->productCode == IO_DEVICE_TYPE_DI16)
+        // Safety checks
+        if (IO_slave_data[i].d_ptr == NULL)
+            continue;
+
+        if (gSharedMem.IOCoupler_Devices.slaveInfo[i].output_index == 0)
+            continue;
+		
+		int pdonum = gSharedMem.IOCoupler_Devices.slaveInfo[i].output_index - 1;
+
+		if (pdonum >= MAX_IO_DEVICES)
+					continue;
+				
+        int bit_offset = (gSharedMem.IOCoupler_Devices.slaveInfo[i].output_index - 1) * 16;
+
+        uint16_t do_val = 0;
+
+        for (int bit = 0; bit < 16; bit++)
         {
-            if (s->d_ptr != NULL)
+            int coil_index = bit_offset + bit;
+
+            uint8_t coil_byte = mbs_app_storage.Coils[coil_index >> 3];
+            uint8_t mask      = (1U << (coil_index & 0x07));
+
+            if (coil_byte & mask)
             {
-                memcpy(&gInputProcessImage[s->offset_index],
-                       s->d_ptr,
-                       IO_DIGITAL_MODULE_BYTESIZE);
+                do_val |= (1U << bit);
             }
         }
 
-        /* =========================
-         * ANALOG INPUT
-         * ========================= */
-        else if ((s->productCode == IO_DEVICE_TYPE_AIC8) ||
-                 (s->productCode == IO_DEVICE_TYPE_AIV8))
+        memcpy(IO_slave_data[i].d_ptr, &do_val, sizeof(uint16_t));
+		uint8_t res = sendOnePDOevent(&Master_Data, pdonum);
+    }
+}
+
+void sync_mb_di(void)
+{
+    for (int i = 0; i < gSharedMem.IOCoupler_Devices.numberOfSlaves; i++)
+    {
+        // Only DI modules
+        if (gSharedMem.IOCoupler_Devices.slaveInfo[i].productCode != IO_DEVICE_TYPE_DI16)
+            continue;
+
+        // Safety checks
+        if (IO_slave_data[i].d_ptr == NULL)
+            continue;
+
+        if (gSharedMem.IOCoupler_Devices.slaveInfo[i].input_index == 0)
+            continue;
+
+        int bit_offset = (gSharedMem.IOCoupler_Devices.slaveInfo[i].input_index - 1) * 16;
+
+        uint16_t di_val = 0;
+
+        // Read DI value
+        memcpy(&di_val, IO_slave_data[i].d_ptr, sizeof(uint16_t));
+
+        for (int bit = 0; bit < 16; bit++)
         {
-            for (int ch = 0; ch < IO_ANALOG_CHANNEL_NUM; ch++)
+            int coil_index = bit_offset + bit;
+
+            uint8_t *coil_byte = &mbs_app_storage.DiscreteCoils[coil_index >> 3];
+            uint8_t  mask      = (1U << (coil_index & 0x07));
+
+            if (di_val & (1U << bit))
             {
-                if (s->a_ptr[ch] != NULL)
-                {
-                    memcpy(&gInputProcessImage[s->offset_index + (ch * 2)],
-                           s->a_ptr[ch],
-                           IO_ANALOG_BYTES_PER_CHANNEL);
-                }
+                *coil_byte |= mask;
+            }
+            else
+            {
+                *coil_byte &= ~mask;
             }
         }
     }
 }
-
-void UpdateOutputModules(void)
-{	
-    for (int i = 0; i < IOCoupler_Devices.numberOfSlaves; i++)
-    {
-        IO_SlaveInfo *s = &IOCoupler_Devices.slaveInfo[i];
-
-        /* =========================
-         * DIGITAL OUTPUT
-         * ========================= */
-        if (s->productCode == IO_DEVICE_TYPE_DO16)
-        {
-            if (s->d_ptr != NULL)
-            {
-                memcpy(s->d_ptr,
-                       &gOutputProcessImage[s->offset_index],
-                       IO_DIGITAL_MODULE_BYTESIZE);
-            }
-        }
-
-        /* =========================
-         * ANALOG OUTPUT
-         * ========================= */
-        else if ((s->productCode == IO_DEVICE_TYPE_AOC8) ||
-                 (s->productCode == IO_DEVICE_TYPE_AOV8))
-        {
-            for (int ch = 0; ch < IO_ANALOG_CHANNEL_NUM; ch++)
-            {
-                if (s->a_ptr[ch] != NULL)
-                {
-                    memcpy(s->a_ptr[ch],
-                           &gOutputProcessImage[s->offset_index + (ch * 2)],
-                           IO_ANALOG_BYTES_PER_CHANNEL);
-                }
-            }
-        }
-    }
-}
-#endif
-
-#if (ACTIVE_PROTOCOL == IOCOUPLER_ECAT)
-// static TaskHandle_t task_inds_comm_ecat = NULL;
-// void set_task_handle(TaskHandle_t *taskh){
-// 	task_inds_comm_ecat = taskh;
-// }
-
-// void start_inds_comm_ecat(){
-// 	vTaskResume(task_inds_comm_ecat);
-// }
-// void stop_inds_comm_ecat(){
-// 	vTaskSuspend(task_inds_comm_ecat);
-// }
 #endif
 /* ========================================================= */
 void RecvPDOLoop(void *args)
@@ -382,126 +354,59 @@ void SendPDOLoop(void *args)
 
 	vTaskSuspend(NULL);
 
-#if (ACTIVE_PROTOCOL == IOCOUPLER_MODBUSTCP)
-	while(1){
-		sync_mb_coil();
-		sync_mb_di();
-		vTaskDelay(1);
-	}
-#endif
     CO_Data* d = &Master_Data;
-
-    UNS16 last_do[MAX_IO_DEVICES];
-    UNS16 curr_do[MAX_IO_DEVICES];
 	UNS8 pdonum = 0;
 	
-	for(int i = 0; i < MAX_IO_DEVICES; i++){
-		last_do[i] = 0xFFFF; /* invalid initial value */
-	}
-
 	while (1)
 	{
-		for(int i = 0; i < IOCoupler_Devices.numberOfSlaves; i++){
+		if(gSharedMem.ipc_sys.active_protocol == IOCOUPLER_ECAT){
+			vTaskSuspend(NULL);
+		}
+#if (ACTIVE_PROTOCOL == IOCOUPLER_MODBUSTCP)
+		if(gSharedMem.ipc_sys.active_protocol == IOCOUPLER_MODBUSTCP){
+			while(1){
+				sync_mb_coil();
+				sync_mb_di();
+				vTaskDelay(1);
+			}
+		}
+#endif
+		if(gSharedMem.ipc_sys.active_protocol == IOCOUPLER_ETHERNETIP){
+			/* Write outputs → physical IO */
+			UpdateOutputModules();
+
+			/* Read physical IO → process image */
+			UpdateInputProcessImage();
+		}
+
+		for(int i = 0; i < gSharedMem.IOCoupler_Devices.numberOfSlaves; i++){
 			/* only DO16 devices */
-			if (IOCoupler_Devices.slaveInfo[i].productCode != IO_DEVICE_TYPE_DO16)
+			if (gSharedMem.IOCoupler_Devices.slaveInfo[i].productCode != IO_DEVICE_TYPE_DO16)
 				continue;
 
 			/* validate d_ptr */
-			if (!IOCoupler_Devices.slaveInfo[i].d_ptr)
+			if (!IO_slave_data[i].d_ptr)
 				continue;
 
 			/* validate output index (must be 1-based) */
-			if (IOCoupler_Devices.slaveInfo[i].output_index == 0)
+			if (gSharedMem.IOCoupler_Devices.slaveInfo[i].output_index == 0)
 				continue;
 
-			pdonum = IOCoupler_Devices.slaveInfo[i].output_index - 1;
+			pdonum = gSharedMem.IOCoupler_Devices.slaveInfo[i].output_index - 1;
 
 			/* bounds check */
 			if (pdonum >= MAX_IO_DEVICES)
 				continue;		
 
-#if 0 //TEST
-			/* TEST: force DO toggle */
-			// if (IOCoupler_Devices.slaveInfo[i].d_ptr)
-			// {
-			// 	curr_do[pdonum] =
-			// 		(*(UNS16 *)IOCoupler_Devices.slaveInfo[i].d_ptr) ^ 0xFFFF;
+			sendOnePDOevent(d, pdonum);
 
-			// 	*(UNS16 *)IOCoupler_Devices.slaveInfo[i].d_ptr = curr_do[pdonum];
-			// }
-			if (IOCoupler_Devices.slaveInfo[i].d_ptr)
-			{
-				UNS16 *curr_ptr = (UNS16 *)IOCoupler_Devices.slaveInfo[i].d_ptr;
-				uint8_t nodeId = IOCoupler_Devices.slaveInfo[i].nodeId;
-
-				// DO nodes follow pattern: (nodeId % 4 == 1 or 2)
-				if ((nodeId % 4 == 1) || (nodeId % 4 == 2))
-				{
-					//--------------------------------------------------
-					// DO-1 → toggle
-					//--------------------------------------------------
-					if (nodeId == 1)
-					{
-						curr_do[pdonum] = (*curr_ptr) ^ 0xFFFF;
-					}
-
-					//--------------------------------------------------
-					// DO-x (x % 4 == 2) → from DI (x+1)
-					//--------------------------------------------------
-					else if (nodeId % 4 == 2)
-					{
-						uint8_t di_node = nodeId + 1;
-
-						int di_idx = find_slave_index_by_nodeId(di_node);
-						if (di_idx < 0 || !IOCoupler_Devices.slaveInfo[di_idx].d_ptr)
-							continue;
-
-						UNS16 *di_ptr = (UNS16 *)IOCoupler_Devices.slaveInfo[di_idx].d_ptr;
-						curr_do[pdonum] = *di_ptr;
-					}
-
-					//--------------------------------------------------
-					// DO-x (x % 4 == 1, >1) → from previous DO (x-1)
-					//--------------------------------------------------
-					else if ((nodeId % 4 == 1) && (nodeId > 1))
-					{
-						uint8_t src_node = nodeId - 1;
-
-						int src_idx = find_slave_index_by_nodeId(src_node);
-						if (src_idx < 0 || !IOCoupler_Devices.slaveInfo[src_idx].d_ptr)
-							continue;
-
-						UNS16 *src_ptr = (UNS16 *)IOCoupler_Devices.slaveInfo[src_idx].d_ptr;
-						curr_do[pdonum] = *src_ptr;
-					}
-
-					//--------------------------------------------------
-					// Apply result
-					//--------------------------------------------------
-					*curr_ptr = curr_do[pdonum];
-				}
-			}
-			else
-#endif
-			{
-				curr_do[pdonum] =
-					*(UNS16 *)IOCoupler_Devices.slaveInfo[i].d_ptr;
-			}
-
-			/* send only on change */
-			if (curr_do[pdonum] != last_do[pdonum])
-			{
-				sendOnePDOevent(d, pdonum);
-				last_do[pdonum] = curr_do[pdonum];
-
-				// DebugP_log(
-				// 	"PDO_LOOP DO nodeId=0x%02X pdonum=%d curr=0x%04X raw=0x%04X\r\n",
-				// 	IOCoupler_Devices.slaveInfo[i].nodeId,
-				// 	pdonum,
-				// 	curr_do[pdonum],
-				// 	*(UNS16 *)IOCoupler_Devices.slaveInfo[i].d_ptr
-				// );
-			}
+			// DebugP_log(
+			// 	"PDO_LOOP DO nodeId=0x%02X pdonum=%d curr=0x%04X raw=0x%04X\r\n",
+			// 	gSharedMem.IOCoupler_Devices.slaveInfo[i].nodeId,
+			// 	pdonum,
+			// 	curr_do[pdonum],
+			// 	*(UNS16 *)IO_slave_data[i].d_ptr
+			// );
 		}
 		vTaskDelay(1);
 	}
@@ -514,10 +419,9 @@ void Master_heartbeatError(CO_Data* d, UNS8 heartbeatID)
 	// if(heartbeatID == 2){
 	// 	DebugP_log("consumer hb node 2 : %u ms\r\n", ClockP_getTimeUsec()/1000);
 	// }
-	for(int i = 0; i < IOCoupler_Devices.numberOfSlaves; i++){
-		if(IOCoupler_Devices.slaveInfo[i].nodeId == heartbeatID){
-			IOCoupler_Devices.slaveInfo[i].nodeState = getNodeState(d, heartbeatID);
-			master_set_IOerror(&IOCoupler_Devices.slaveInfo[i], CANOPEN_IO_HEARTBEAT, HEARTBEAT_ERR_TIMEOUT);
+	for(int i = 0; i < gSharedMem.IOCoupler_Devices.numberOfSlaves; i++){
+		if(gSharedMem.IOCoupler_Devices.slaveInfo[i].nodeId == heartbeatID){
+			master_set_IOerror((IO_SlaveInfo *)&gSharedMem.IOCoupler_Devices.slaveInfo[i], CANOPEN_IO_HEARTBEAT, HEARTBEAT_ERR_TIMEOUT);
 			break;
 		}
 	}
@@ -550,27 +454,28 @@ void Master_preOperational(CO_Data* d)
 	ODMaster_configure_PDO(d);
 
 	// Configure each slave
-	for(int i=0; i<IOCoupler_Devices.numberOfSlaves; i++){
-		ConfigureSlaveNode(d, &IOCoupler_Devices.slaveInfo[i]);
+	for(int i=0; i<gSharedMem.IOCoupler_Devices.numberOfSlaves; i++){
+		ConfigureSlaveNode(d, (IO_SlaveInfo *)&gSharedMem.IOCoupler_Devices.slaveInfo[i]);
 		vTaskDelay(20);
 	}
 
-	// Put all slaves in operational mode
-	// for(int i=0; i<IOCoupler_Devices.numberOfSlaves; i++){
-	// 	masterSendNMTstateChange (d, IOCoupler_Devices.slaveInfo[i].nodeId, NMT_Start_Node);
-	// 	vTaskDelay(5);
-	// }
 	masterSendNMTstateChange (d, 0x00, NMT_Start_Node);
 	
-#if ((ACTIVE_PROTOCOL == IOCOUPLER_ETHERNETIP) || (ACTIVE_PROTOCOL == IOCOUPLER_ECAT))
-    BuildProcessImage();
-#endif
+    if( (gSharedMem.ipc_sys.active_protocol == IOCOUPLER_ETHERNETIP) ||
+		(gSharedMem.ipc_sys.active_protocol == IOCOUPLER_ECAT) )
+	{
+		BuildProcessImage();
+	}
 
 	vTaskDelay(100);
 	
 	master_start_tasks();
 	//Put the master in operational mode
 	setState(d, Operational);
+
+	app_ipc_sharemem_lock();
+	gSharedMem.ipc_sys.master_state = 1;
+	app_ipc_sharemem_unlock();
 }
 
 void Master_operational(CO_Data* d)
@@ -588,20 +493,20 @@ void Master_post_sync(CO_Data* d)
 	DebugP_log("-----------------------------------\r\n");
 	DebugP_log("[Master] Master_post_sync\r\n");
 
-	for (int i = 0; i < IOCoupler_Devices.numberOfSlaves; i++)
-    {
-		if (IOCoupler_Devices.slaveInfo[i].productCode == IO_DEVICE_TYPE_DI16)
-		{
-			if (IOCoupler_Devices.slaveInfo[i].d_ptr)
-			{
-				DebugP_log(
-					"DI nodeId 0x%02X Value = 0x%04X\n",
-					IOCoupler_Devices.slaveInfo[i].nodeId,
-					*(UNS16 *)IOCoupler_Devices.slaveInfo[i].d_ptr
-				);
-			}
-		}
-	}
+	// for (int i = 0; i < gSharedMem.IOCoupler_Devices.numberOfSlaves; i++)
+    // {
+	// 	if (gSharedMem.IOCoupler_Devices.slaveInfo[i].productCode == IO_DEVICE_TYPE_DI16)
+	// 	{
+	// 		if (gSharedMem.IOCoupler_Devices.slaveInfo[i].d_ptr)
+	// 		{
+	// 			DebugP_log(
+	// 				"DI nodeId 0x%02X Value = 0x%04X\n",
+	// 				gSharedMem.IOCoupler_Devices.slaveInfo[i].nodeId,
+	// 				*(UNS16 *)gSharedMem.IOCoupler_Devices.slaveInfo[i].d_ptr
+	// 			);
+	// 		}
+	// 	}
+	// }
 
 	DebugP_log("-----------------------------------\r\n");
 }
@@ -612,27 +517,27 @@ void Master_post_TPDO(CO_Data* d)
 		DebugP_log("-----------------------------------\r\n");
 		DebugP_log("[Master] Master_post_TPDO\r\n");
 
-		for (int i = 0; i < IOCoupler_Devices.numberOfSlaves; i++)
-		{
-			if (IOCoupler_Devices.slaveInfo[i].productCode == IO_DEVICE_TYPE_DO16)
-			{
-				/* Force DO value for slave index 0x13 */
-				if (IOCoupler_Devices.slaveInfo[i].nodeId == 0x13)
-				{
-					UNS16 *do_val = (UNS16 *)IOCoupler_Devices.slaveInfo[i].d_ptr;
-					*do_val ^= 0xFFFF;
-				}
+		// for (int i = 0; i < gSharedMem.IOCoupler_Devices.numberOfSlaves; i++)
+		// {
+		// 	if (gSharedMem.IOCoupler_Devices.slaveInfo[i].productCode == IO_DEVICE_TYPE_DO16)
+		// 	{
+		// 		/* Force DO value for slave index 0x13 */
+		// 		if (gSharedMem.IOCoupler_Devices.slaveInfo[i].nodeId == 0x13)
+		// 		{
+		// 			UNS16 *do_val = (UNS16 *)gSharedMem.IOCoupler_Devices.slaveInfo[i].d_ptr;
+		// 			*do_val ^= 0xFFFF;
+		// 		}
 
-				if (IOCoupler_Devices.slaveInfo[i].d_ptr)
-				{
-					DebugP_log(
-						"post_TPDO DO nodeId 0x%02X Value = 0x%04X\r\n",
-						IOCoupler_Devices.slaveInfo[i].nodeId,
-						*(UNS16 *)IOCoupler_Devices.slaveInfo[i].d_ptr
-					);
-				}
-			}
-		}
+		// 		if (gSharedMem.IOCoupler_Devices.slaveInfo[i].d_ptr)
+		// 		{
+		// 			DebugP_log(
+		// 				"post_TPDO DO nodeId 0x%02X Value = 0x%04X\r\n",
+		// 				gSharedMem.IOCoupler_Devices.slaveInfo[i].nodeId,
+		// 				*(UNS16 *)gSharedMem.IOCoupler_Devices.slaveInfo[i].d_ptr
+		// 			);
+		// 		}
+		// 	}
+		// }
 		
 		DebugP_log("-----------------------------------\r\n");
 	}
@@ -640,22 +545,22 @@ void Master_post_TPDO(CO_Data* d)
 
 void Master_post_emcy(CO_Data* d, UNS8 nodeID, UNS16 errCode, UNS8 errReg)
 {
-    for(int i = 0; i < IOCoupler_Devices.numberOfSlaves; i++) {
-        if(IOCoupler_Devices.slaveInfo[i].nodeId == nodeID) {
-			uint32_t last_error_type = IOCoupler_Devices.slaveInfo[i].last_error_type;
-			uint32_t last_error_code = IOCoupler_Devices.slaveInfo[i].last_error_code;
+    for(int i = 0; i < gSharedMem.IOCoupler_Devices.numberOfSlaves; i++) {
+        if(gSharedMem.IOCoupler_Devices.slaveInfo[i].nodeId == nodeID) {
+			uint32_t last_error_type = (uint32_t)gSharedMem.IOCoupler_Devices.slaveInfo[i].last_error_type;
+			uint32_t last_error_code = (uint32_t)gSharedMem.IOCoupler_Devices.slaveInfo[i].last_error_code;
             
             if((last_error_type == CANOPEN_IO_EMCY) && (errCode == 0x0000)) {
 				DebugP_log("[Master] EMCY received. Node: 0x%02X  ErrorCode: 0x%04X  ErrorRegister: 0x%02X\r\n", 
             		nodeID, errCode, errReg);
-                master_set_IOerror(&IOCoupler_Devices.slaveInfo[i], CANOPEN_IO_NO_ERR, 0);
+                master_set_IOerror((IO_SlaveInfo *)&gSharedMem.IOCoupler_Devices.slaveInfo[i], CANOPEN_IO_NO_ERR, 0);
             } else if (errCode != 0x0000) {
 				DebugP_log("[Master] EMCY received. Node: 0x%02X  ErrorCode: 0x%04X  ErrorRegister: 0x%02X\r\n", 
             		nodeID, errCode, errReg);
                 uint32_t io_errcode = ((uint32_t)errReg << 16) | (errCode & 0xFFFF);
                 
                 DebugP_log("io_errcode = 0x%08X\r\n", io_errcode);
-                master_set_IOerror(&IOCoupler_Devices.slaveInfo[i], CANOPEN_IO_EMCY, io_errcode);
+                master_set_IOerror((IO_SlaveInfo *)&gSharedMem.IOCoupler_Devices.slaveInfo[i], CANOPEN_IO_EMCY, io_errcode);
             }
             break;
         }
@@ -665,20 +570,22 @@ void Master_post_emcy(CO_Data* d, UNS8 nodeID, UNS16 errCode, UNS8 errReg)
 void Master_post_SlaveBootup(CO_Data* d, UNS8 nodeid)
 {
 	// DebugP_log("[Master] Master_post_SlaveBootup 0x%x\r\n", nodeid);
-	for(int i = 0; i < IOCoupler_Devices.numberOfSlaves; i++){
-		if(IOCoupler_Devices.slaveInfo[i].nodeId == nodeid){
-			e_nodeState nodeState = (e_nodeState)IOCoupler_Devices.slaveInfo[i].nodeState;
+	for(int i = 0; i < gSharedMem.IOCoupler_Devices.numberOfSlaves; i++){
+		if(gSharedMem.IOCoupler_Devices.slaveInfo[i].nodeId == nodeid){
+			e_nodeState nodeState = (e_nodeState)gSharedMem.IOCoupler_Devices.slaveInfo[i].nodeState;
 			
 			if(nodeState == Disconnected){
-				uint32_t last_error_type = IOCoupler_Devices.slaveInfo[i].last_error_type;
-				uint32_t last_error_code = IOCoupler_Devices.slaveInfo[i].last_error_code;
+				uint32_t last_error_type = gSharedMem.IOCoupler_Devices.slaveInfo[i].last_error_type;
+				uint32_t last_error_code = gSharedMem.IOCoupler_Devices.slaveInfo[i].last_error_code;
 				if( (last_error_type == CANOPEN_IO_HEARTBEAT) 
 					&& (last_error_code == HEARTBEAT_ERR_TIMEOUT) ){
-					master_set_IOerror(&IOCoupler_Devices.slaveInfo[i], CANOPEN_IO_REBOOT, 1);
+					master_set_IOerror((IO_SlaveInfo *)&gSharedMem.IOCoupler_Devices.slaveInfo[i], CANOPEN_IO_REBOOT, 1);
 					Reconfigure_slave(d, nodeid);
 				}
 			}else{
-				IOCoupler_Devices.slaveInfo[i].nodeState = Initialisation;
+				app_ipc_sharemem_lock();
+				gSharedMem.IOCoupler_Devices.slaveInfo[i].nodeState = Initialisation;
+				app_ipc_sharemem_unlock();
 			}
 			
 			break;
@@ -688,32 +595,34 @@ void Master_post_SlaveBootup(CO_Data* d, UNS8 nodeid)
 
 void Master_post_SlaveStateChange(CO_Data* d, UNS8 nodeid, e_nodeState newNodeState)
 {
-	for(int i = 0; i < IOCoupler_Devices.numberOfSlaves; i++){
-		if(IOCoupler_Devices.slaveInfo[i].nodeId == nodeid){
-			e_nodeState nodeState = (e_nodeState)IOCoupler_Devices.slaveInfo[i].nodeState;
-			uint32_t last_error_type = IOCoupler_Devices.slaveInfo[i].last_error_type;
-			uint32_t last_error_code = IOCoupler_Devices.slaveInfo[i].last_error_code;
+	for(int i = 0; i < gSharedMem.IOCoupler_Devices.numberOfSlaves; i++){
+		if(gSharedMem.IOCoupler_Devices.slaveInfo[i].nodeId == nodeid){
+			e_nodeState nodeState = (e_nodeState)gSharedMem.IOCoupler_Devices.slaveInfo[i].nodeState;
+			uint32_t last_error_type = gSharedMem.IOCoupler_Devices.slaveInfo[i].last_error_type;
+			uint32_t last_error_code = gSharedMem.IOCoupler_Devices.slaveInfo[i].last_error_code;
 			// DebugP_log("[Master] Master_post_SlaveStateChange id 0x%x | currstate 0x%x |newstate 0x%x\r\n", nodeid, nodeState, newNodeState);
 			
 			if(nodeState == Disconnected){
 				if(newNodeState == Operational){
-					master_set_IOerror(&IOCoupler_Devices.slaveInfo[i], CANOPEN_IO_NO_ERR, 0);
+					master_set_IOerror((IO_SlaveInfo *)&gSharedMem.IOCoupler_Devices.slaveInfo[i], CANOPEN_IO_NO_ERR, 0);
 				}
 				else {
 					if( (last_error_type == CANOPEN_IO_HEARTBEAT) 
 						&& (last_error_code == HEARTBEAT_ERR_TIMEOUT) ){
-						master_set_IOerror(&IOCoupler_Devices.slaveInfo[i], HEARTBEAT_ERR_RECOVERED, HEARTBEAT_ERR_RECOVERED);
+						master_set_IOerror((IO_SlaveInfo *)&gSharedMem.IOCoupler_Devices.slaveInfo[i], HEARTBEAT_ERR_RECOVERED, HEARTBEAT_ERR_RECOVERED);
 						Reconfigure_slave(d, nodeid);
 					}
 				}
 			}else if ( (nodeState == Operational) && (newNodeState != nodeState) ){
 				DebugP_log("[Master] Slave 0x%x changed from OPERATIONAL to WRONG MODE\r\n", nodeid);
-				master_set_IOerror(&IOCoupler_Devices.slaveInfo[i], CANOPEN_IO_WRONG_MODE_OP, newNodeState);
+				master_set_IOerror((IO_SlaveInfo *)&gSharedMem.IOCoupler_Devices.slaveInfo[i], CANOPEN_IO_WRONG_MODE_OP, newNodeState);
 			}else {
-				master_set_IOerror(&IOCoupler_Devices.slaveInfo[i], CANOPEN_IO_NO_ERR, 0);
+				master_set_IOerror((IO_SlaveInfo *)&gSharedMem.IOCoupler_Devices.slaveInfo[i], CANOPEN_IO_NO_ERR, 0);
 			}
 
-			IOCoupler_Devices.slaveInfo[i].nodeState = newNodeState;
+			app_ipc_sharemem_lock();
+			gSharedMem.IOCoupler_Devices.slaveInfo[i].nodeState = newNodeState;
+			app_ipc_sharemem_unlock();
 			break;
 		}
 	}
@@ -746,10 +655,10 @@ static void Reconfigure_slave(CO_Data* d, UNS32 nodeId)
 	masterSendNMTstateChange(d, nodeId, NMT_Enter_PreOperational);
 	vTaskDelay(250);
 	
-	for(int i=0; i<IOCoupler_Devices.numberOfSlaves; i++){
-		if(IOCoupler_Devices.slaveInfo[i].nodeId == nodeId){
+	for(int i=0; i<gSharedMem.IOCoupler_Devices.numberOfSlaves; i++){
+		if(gSharedMem.IOCoupler_Devices.slaveInfo[i].nodeId == nodeId){
 			master_reset_conf_step_slave(nodeId);
-			ConfigureSlaveNode(d, &IOCoupler_Devices.slaveInfo[i]);
+			ConfigureSlaveNode(d, (IO_SlaveInfo *)&gSharedMem.IOCoupler_Devices.slaveInfo[i]);
 			vTaskDelay(20);
 
 			masterSendNMTstateChange (d, nodeId, NMT_Start_Node);
@@ -776,10 +685,10 @@ static void CheckSDOAndContinue(CO_Data* d, UNS8 nodeId)
 	/* Finalise last SDO transfer with this node */
 	closeSDOtransfer(&Master_Data, nodeId, SDO_CLIENT);
 
-	for(int i=0; i<IOCoupler_Devices.numberOfSlaves; i++){
-		if(IOCoupler_Devices.slaveInfo[i].nodeId == nodeId){
+	for(int i=0; i<gSharedMem.IOCoupler_Devices.numberOfSlaves; i++){
+		if(gSharedMem.IOCoupler_Devices.slaveInfo[i].nodeId == nodeId){
 			/* Continue the configuration */
-			ConfigureSlaveNode(d, &IOCoupler_Devices.slaveInfo[i]);
+			ConfigureSlaveNode(d, (IO_SlaveInfo *)&gSharedMem.IOCoupler_Devices.slaveInfo[i]);
 		}
 	}
 	
@@ -932,30 +841,22 @@ static void master_reset_conf_step_slave(UNS32 nodeId){
 }
 
 static void master_start_tasks(void){
-#if (ACTIVE_PROTOCOL == IOCOUPLER_MODBUSTCP)
-	if(task[TASK_INDS_COM].TaskHandle){
-		vTaskResume(task[TASK_INDS_COM].TaskHandle);
-	}
-#endif
-
 	if(task[TASK_CAN_TPDO].TaskHandle){
 		vTaskResume(task[TASK_CAN_TPDO].TaskHandle);
 	}
 }
 
 static void master_stop_tasks(void){
-#if (ACTIVE_PROTOCOL == IOCOUPLER_MODBUSTCP)
-	if(task[TASK_INDS_COM].TaskHandle){
-		vTaskSuspend(task[TASK_INDS_COM].TaskHandle);
-	}
-#endif
-
 	if(task[TASK_CAN_TPDO].TaskHandle){
 		vTaskSuspend(task[TASK_CAN_TPDO].TaskHandle);
 	}
 }
 
 static void master_rescan(void){
+	app_ipc_sharemem_lock();
+	gSharedMem.ipc_sys.master_state = 0;
+	app_ipc_sharemem_unlock();
+	
 	master_stop_tasks();
     IOCoupler_reset(&Master_Data);
 	master_reset_conf_step(&Master_Data);
@@ -972,15 +873,125 @@ static void print_master_info(void){
 	DebugP_log("-------------------------------------\r\n");
 	DebugP_log("Master FW Version %s\r\n", MASTER_FW_VERSION);
 	DebugP_log("Max IO Devices %d\r\n", MAX_IO_DEVICES);
-	DebugP_log("Active Protocol %d\r\n", ACTIVE_PROTOCOL);
 	DebugP_log("-------------------------------------\r\n");
+}
+
+static void print_all_io_values(void)
+{
+    DebugP_log("\n============== ALL IO VALUES ==============\r\n");
+
+    for (int i = 0; i < gSharedMem.IOCoupler_Devices.numberOfSlaves; i++)
+    {
+        IO_SlaveInfo *info = (IO_SlaveInfo *)&gSharedMem.IOCoupler_Devices.slaveInfo[i];
+
+        if (info->nodeId <= 0)
+            continue;
+
+        DebugP_log("\n-----------------------------------\r\n");
+        DebugP_log("Node ID      : %d\r\n", info->nodeId);
+        DebugP_log("Product Code : %u\r\n", info->productCode);
+
+        // =========================
+        // Digital IO
+        // =========================
+        if ((info->productCode == IO_DEVICE_TYPE_DO16) ||
+            (info->productCode == IO_DEVICE_TYPE_DI16))
+        {
+            if (IO_slave_data[i].d_ptr)
+            {
+                char bit_buf[17];
+
+                uint16_t val = *(uint16_t *)IO_slave_data[i].d_ptr;
+
+                DebugP_log("Digital HEX  : 0x%04X\r\n", val);
+
+                for (int b = 0; b < 16; b++) {
+                    bit_buf[b] = (val & (1 << (15 - b))) ? '1' : '0';
+                }
+
+                bit_buf[16] = '\0';
+
+                DebugP_log("Digital BIN  : %s\r\n", bit_buf);
+            }
+            else
+            {
+                DebugP_log("Digital Pointer NULL\r\n");
+            }
+        }
+
+        // =========================
+		// 8CH Analog
+		// =========================
+		else if ((info->productCode == IO_DEVICE_TYPE_AIC8) ||
+				(info->productCode == IO_DEVICE_TYPE_AIV8) ||
+				(info->productCode == IO_DEVICE_TYPE_AOC8) ||
+				(info->productCode == IO_DEVICE_TYPE_AOV8))
+		{
+			DebugP_log("Analog 8CH Values:\r\n");
+
+			for (int ch = 0; ch < 8; ch++)
+			{
+				if (IO_slave_data[i].a_ptr[ch])
+				{
+					uint16_t val = *(uint16_t *)IO_slave_data[i].a_ptr[ch];
+
+					DebugP_log("  CH%d = 0x%04X (%u)\r\n",
+						ch,
+						val,
+						val);
+				}
+				else
+				{
+					DebugP_log("  CH%d = NULL\r\n", ch);
+				}
+			}
+		}
+
+        // =========================
+		// RTD 12CH
+		// =========================
+		else if ((info->productCode == IO_DEVICE_TYPE_RTDY) ||
+				(info->productCode == IO_DEVICE_TYPE_RTDB))
+		{
+			DebugP_log("RTD 12CH Values:\r\n");
+
+			for (int ch = 0; ch < 12; ch++)
+			{
+				if (IO_slave_data[i].a_ptr[ch])
+				{
+					uint16_t val = *(uint16_t *)IO_slave_data[i].a_ptr[ch];
+
+					DebugP_log("  CH%d = 0x%04X (%d)\r\n",
+						ch,
+						val,
+						(int16_t)val);
+				}
+				else
+				{
+					DebugP_log("  CH%d = NULL\r\n", ch);
+				}
+			}
+		}
+        else
+        {
+            DebugP_log("Unknown IO Type\r\n");
+        }
+    }
+
+    DebugP_log("===========================================\r\n");
 }
 
 static void master_set_IOerror(IO_SlaveInfo *slaveInfo, uint32_t error_type, uint32_t error_code) {
     
-    if (error_type == CANOPEN_IO_NO_ERR) {
+	app_ipc_sharemem_lock();
+	slaveInfo->nodeState = getNodeState(&Master_Data, slaveInfo->nodeId);
+    app_ipc_sharemem_unlock();
+	
+	if (error_type == CANOPEN_IO_NO_ERR) {
+		app_ipc_sharemem_lock();
         slaveInfo->last_error_type = CANOPEN_IO_NO_ERR;
         slaveInfo->last_error_code = 0;
+		app_ipc_sharemem_unlock();
         return;
     }
 
@@ -989,8 +1000,10 @@ static void master_set_IOerror(IO_SlaveInfo *slaveInfo, uint32_t error_type, uin
         return; 
     }
 
+	app_ipc_sharemem_lock();
     slaveInfo->last_error_type = error_type;
     slaveInfo->last_error_code = error_code;
+	app_ipc_sharemem_unlock();
 }
 
 /****************************************************************************/
@@ -1020,6 +1033,8 @@ void master_loop(void *args)
 			sys_cmd = SYS_NO_EVENT;
 		}
 
+		// print_all_io_values();
+
 		for(int i = 0; i < 50; i++) {
 			vTaskDelay(pdMS_TO_TICKS(100));
 		}
@@ -1034,11 +1049,7 @@ void master_loop(void *args)
 		canSend(NULL, &m);
 		count_data++;
 #endif
-	}	
-	// for(int i=1; i<IOCoupler_Devices.numberOfSlaves; i++){
-	// 	// Reset the slave node for next use (will stop emitting heartbeat)
-	// 	masterSendNMTstateChange (&Master_Data, IOCoupler_Devices.slaveInfo[i-1].nodeId, NMT_Reset_Node);	
-	// }
+	}
 }
 
 int master_main(void)

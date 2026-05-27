@@ -2,7 +2,9 @@
 #include <string.h>
 #include <stdint.h>
 
-#include "IOCoupler.h"
+#include "ipc_shareMem.h"
+
+extern volatile ipc_data_t gSharedMem;
 
 // array size is 300
 const unsigned char gsp_favicon_ico[]  = {
@@ -60,35 +62,45 @@ int generate_io_table(char *html_out, int max_size, IOCoupler_Device *dev)
     // ===== Rows =====
     for (int i = 0; i < dev->numberOfSlaves; i++)
     {
+         char valueStr[64] = {0};
         IO_SlaveInfo *s = &dev->slaveInfo[i];
-        if (s->nodeId == 0) continue;
+        // if (s->nodeId == 0) continue;
 
         validCount++;  // count valid IO
 
-        char valueStr[64] = {0};
+        IO_DigitalValues *dVal = NULL;
 
-        // ===== VALUE handling =====
-        if (s->d_ptr != NULL)
+        /* ===== DIGITAL INPUT ===== */
+        if (s->productCode == IO_DEVICE_TYPE_DI16)
         {
-            IO_DigitalValues *dVal = (IO_DigitalValues *)s->d_ptr;
+            if (s->offset_index + sizeof(IO_DigitalValues) <= sizeof(gSharedMem.buff_in))
+            {
+                dVal = (IO_DigitalValues *)&gSharedMem.buff_in[s->offset_index];
+            }
+        }
+        
+        /* ===== DIGITAL OUTPUT ===== */
+        else if (s->productCode == IO_DEVICE_TYPE_DO16)
+        {
+            if (s->offset_index + sizeof(IO_DigitalValues) <= sizeof(gSharedMem.buff_out))
+            {
+                dVal = (IO_DigitalValues *)&gSharedMem.buff_out[s->offset_index];
+            }
+        }
 
+        if (dVal != NULL)
+        {
             for (int b = 15; b >= 0; b--)
             {
-                valueStr[15 - b] = ((dVal->d_all >> b) & 1) ? '1' : '0';
+                valueStr[15 - b] =
+                    ((dVal->d_all >> b) & 1U) ? '1' : '0';
             }
+
             valueStr[16] = '\0';
         }
         else
         {
-            if (s->a_ptr[0] != NULL)
-            {
-                uint16_t raw = *((uint16_t *)s->a_ptr[0]);
-                snprintf(valueStr, sizeof(valueStr), "%u", raw);
-            }
-            else
-            {
-                snprintf(valueStr, sizeof(valueStr), "0");
-            }
+            snprintf(valueStr, sizeof(valueStr), "N/A");
         }
 
         // ===== Append row =====

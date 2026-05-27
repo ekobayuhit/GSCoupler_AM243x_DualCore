@@ -38,7 +38,6 @@ enum task_id
     TASK_CAN_RX,
     TASK_CAN_RPDO,
     TASK_CAN_TPDO,
-    TASK_INDS_COM,
     TASK_END
 };
 

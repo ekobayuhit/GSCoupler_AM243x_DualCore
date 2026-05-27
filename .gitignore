@@ -1,2 +1,8 @@
+# Block Debug and Release folders (matches exactly 'Debug' or 'Debug2', 'Debug-x64', etc.)
 Debug/
+Debug*/
 Release/
+Release*/
+
+# Block the local .clangd development directory
+.clangd/

@@ -240,7 +240,7 @@ void canRecv_Task(void *args)
     char data[2*8 + 1];
 #endif
     
-    DebugP_log("[MCAN] canRecv_Task started ...\r\n");
+    // DebugP_log("[MCAN] canRecv_Task started ...\r\n");
 
     while(1){
 #if (APP_MCAN_MODE == MCAN_MODE_POLLING)
@@ -294,9 +294,7 @@ void canRecv_Task(void *args)
                     data);
 #endif
         }
-#if (ACTIVE_PROTOCOL != IOCOUPLER_ETHERNETIP)
         vTaskDelay(1);
-#endif
 #endif  /* MCAN_MODE_POLLING */
 
 #if (APP_MCAN_MODE == MCAN_MODE_INTERRUPT)        

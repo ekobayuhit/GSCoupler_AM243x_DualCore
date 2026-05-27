@@ -32,6 +32,7 @@
 
 #include "ti_drivers_config.h"
 #include "ti_board_config.h"
+#include "ipc_shareMem.h"
 
 extern int master_main(void);
 
@@ -48,6 +49,7 @@ int main(void)
     Drivers_open();
     Board_driversOpen();
     
+    init_ipc_sharemem();
     master_main();
 
     Board_driversClose();

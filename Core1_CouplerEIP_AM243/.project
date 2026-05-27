@@ -19,19 +19,14 @@
 	</natures>
 	<linkedResources>
 		<link>
-			<name>canopenmaster</name>
-			<type>2</type>
-			<location>C:/Users/ekoba/workspace_ccstheia/CANopen_AM243/canopenmaster</location>
+			<name>ipc_shareMem.c</name>
+			<type>1</type>
+			<location>C:/Users/ekoba/workspace_ccstheia_dualcore/Core0_CANopen_AM243/ipc_shareMem.c</location>
 		</link>
 		<link>
-			<name>coupler_master</name>
-			<type>2</type>
-			<location>C:/Users/ekoba/workspace_ccstheia/CANopen_AM243/coupler_master</location>
-		</link>
-		<link>
-			<name>driver</name>
-			<type>2</type>
-			<location>C:/Users/ekoba/workspace_ccstheia/CANopen_AM243/driver</location>
+			<name>ipc_shareMem.h</name>
+			<type>1</type>
+			<location>C:/Users/ekoba/workspace_ccstheia_dualcore/Core0_CANopen_AM243/ipc_shareMem.h</location>
 		</link>
 	</linkedResources>
 	<variableList>

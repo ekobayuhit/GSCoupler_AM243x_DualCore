@@ -71,16 +71,10 @@
 
 #include <kernel/dpl/CpuIdP.h>
 
-#include "IOCoupler.h"
+#include "ipc_shareMem.h"
 
 #define OFFSET_INDEX_OUTPUT MAX_INPUT_SIZE_BYTES
-extern IOCoupler_Device IOCoupler_Devices;
-extern uint8_t gInputProcessImage[MAX_INPUT_SIZE_BYTES];   // T -> O (Device → PLC)
-extern uint8_t gOutputProcessImage[MAX_OUTPUT_SIZE_BYTES]; // O -> T (PLC → Device)
-extern void UpdateInputProcessImage();
-extern void UpdateOutputModules();
-extern bool isMaster_running(void);
-extern uint8_t getNumIOSlave(void);
+extern volatile ipc_data_t gSharedMem;
 
 static uint16_t GENERIC_DEVICE_extendedStatus_s[255] = {0};
 
@@ -225,6 +219,8 @@ bool GENERIC_DEVICE_init(EI_API_ADP_T* pAdapter, EI_API_CIP_NODE_T *pCipNode)
     CSL_armR5GetCpuID(&cpuInfo);
     OSAL_printf(" Run on CPU ID %d, Group ID %d\r\n", cpuInfo.cpuID, cpuInfo.grpId);
 
+    gSharedMem.ipc_sys.active_protocol = IOCOUPLER_ETHERNETIP;
+    
     return result;
 }
 
@@ -245,22 +241,26 @@ void GENERIC_DEVICE_run(EI_API_CIP_NODE_T* pCipNode)
 {
     uint32_t errCode = 0;
     
-    if(isMaster_running() && getNumIOSlave() > 0){
+    if( (gSharedMem.ipc_sys.master_state == 1) && 
+        (gSharedMem.IOCoupler_Devices.numberOfSlaves > 0) )
+    {
+        
+        app_ipc_sharemem_lock();
         for(int attr = 0; attr < MAX_OUTPUT_SIZE_BYTES; attr++)
         {
-            errCode = EI_API_CIP_getAttr_byte(pCipNode, 0x0070, 0x0001, attr + CFG_PROFILE_GENERIC_DEVICE_VENDOR_ATTRIBUTE_OUTPUT_ID, &gOutputProcessImage[attr]);
+            errCode = EI_API_CIP_getAttr_byte(pCipNode, 0x0070, 0x0001, attr + CFG_PROFILE_GENERIC_DEVICE_VENDOR_ATTRIBUTE_OUTPUT_ID, &gSharedMem.buff_out[attr]);
         }
-        /* Write outputs → physical IO */
-        UpdateOutputModules();
+        app_ipc_sharemem_unlock();
 
-        /* Read physical IO → process image */
-        UpdateInputProcessImage();
-
+        app_ipc_sharemem_lock();
         for(int attr = 0; attr < MAX_INPUT_SIZE_BYTES; attr++)
         {
-            EI_API_CIP_setAttr_byte(pCipNode, 0x0070, 0x0001, attr + CFG_PROFILE_GENERIC_DEVICE_VENDOR_ATTRIBUTE_INPUT_ID, gInputProcessImage[attr]);
+            EI_API_CIP_setAttr_byte(pCipNode, 0x0070, 0x0001, attr + CFG_PROFILE_GENERIC_DEVICE_VENDOR_ATTRIBUTE_INPUT_ID, gSharedMem.buff_in[attr]);
         }
+        app_ipc_sharemem_unlock();
     }
+
+    // Master_print_io_info();
 }
 
 void GENERIC_DEVICE_Create_IO_Map(EI_API_CIP_NODE_T* pCipNode, uint16_t classId, uint16_t instanceId)
@@ -409,7 +409,7 @@ static void GENERIC_DEVICE_cipGenerateContent(EI_API_CIP_NODE_T* cipNode,
         attr.id = attribID;
         attr.edt = EI_API_CIP_eEDT_BYTE;
         attr.accessRule = EI_API_CIP_eAR_GET_AND_SET;
-        attr.pvValue = &gOutputProcessImage[i];
+        attr.pvValue = &gSharedMem.buff_out[i];
 
         EI_API_CIP_addInstanceAttr(cipNode, classId, instanceId, &attr);
         EI_API_CIP_setInstanceAttr(cipNode, classId, instanceId, &attr);
@@ -425,7 +425,7 @@ static void GENERIC_DEVICE_cipGenerateContent(EI_API_CIP_NODE_T* cipNode,
         attr.id = attribID;
         attr.edt = EI_API_CIP_eEDT_BYTE;
         attr.accessRule = EI_API_CIP_eAR_GET;
-        attr.pvValue = &gInputProcessImage[i];
+        attr.pvValue = &gSharedMem.buff_in[i];
 
         EI_API_CIP_addInstanceAttr(cipNode, classId, instanceId, &attr);
         EI_API_CIP_setInstanceAttr(cipNode, classId, instanceId, &attr);

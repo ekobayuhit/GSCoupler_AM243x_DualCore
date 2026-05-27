@@ -16,7 +16,8 @@
 /* GLOBAL DATA                                        */
 /* -------------------------------------------------- */
 
-IOCoupler_Device IOCoupler_Devices;
+extern volatile ipc_data_t gSharedMem;
+IO_RuntimeInfo IO_slave_data[MAX_IO_DEVICES];
 
 /* Scan context */
 static ScanState_t scanState = SCAN_IDLE;
@@ -99,65 +100,66 @@ static const char *IO_typename(uint32_t productCode)
 
 static void IOCoupler_put_slave_info(IO_SlaveInfo *info)
 {
-    if (IOCoupler_Devices.numberOfSlaves >= MAX_IO_DEVICES)
+    app_ipc_sharemem_lock();
+    if (gSharedMem.IOCoupler_Devices.numberOfSlaves >= MAX_IO_DEVICES)
         return;
 
     switch(info->productCode) {
         // --- OUTPUT DEVICES ---
         case IO_DEVICE_TYPE_DO16:
-            IOCoupler_Devices.numberofDO++;
-            IOCoupler_Devices.numberOfOutputSlaves++;
-            info->output_index = IOCoupler_Devices.numberOfOutputSlaves;
+            gSharedMem.IOCoupler_Devices.numberofDO++;
+            gSharedMem.IOCoupler_Devices.numberOfOutputSlaves++;
+            info->output_index = gSharedMem.IOCoupler_Devices.numberOfOutputSlaves;
             info->input_index = 0;
             break;
 
         case IO_DEVICE_TYPE_AOC8:
-            IOCoupler_Devices.numberofAOC++;        
-            IOCoupler_Devices.numberOfOutputSlaves++;
-            info->output_index = IOCoupler_Devices.numberOfOutputSlaves;
+            gSharedMem.IOCoupler_Devices.numberofAOC++;        
+            gSharedMem.IOCoupler_Devices.numberOfOutputSlaves++;
+            info->output_index = gSharedMem.IOCoupler_Devices.numberOfOutputSlaves;
             info->input_index = 0;
             break;
 
         case IO_DEVICE_TYPE_AOV8:
-            IOCoupler_Devices.numberofAOV++;        
-            IOCoupler_Devices.numberOfOutputSlaves++;
-            info->output_index = IOCoupler_Devices.numberOfOutputSlaves;
+            gSharedMem.IOCoupler_Devices.numberofAOV++;        
+            gSharedMem.IOCoupler_Devices.numberOfOutputSlaves++;
+            info->output_index = gSharedMem.IOCoupler_Devices.numberOfOutputSlaves;
             info->input_index = 0;
             break;
 
         // --- INPUT DEVICES ---
         case IO_DEVICE_TYPE_DI16:
-            IOCoupler_Devices.numberofDI++;
-            IOCoupler_Devices.numberOfInputSlaves++;
-            info->input_index = IOCoupler_Devices.numberOfInputSlaves;
+            gSharedMem.IOCoupler_Devices.numberofDI++;
+            gSharedMem.IOCoupler_Devices.numberOfInputSlaves++;
+            info->input_index = gSharedMem.IOCoupler_Devices.numberOfInputSlaves;
             info->output_index = 0;
             break;
 
         case IO_DEVICE_TYPE_AIC8:
-            IOCoupler_Devices.numberofAIC++;
-            IOCoupler_Devices.numberOfInputSlaves++;
-            info->input_index = IOCoupler_Devices.numberOfInputSlaves;
+            gSharedMem.IOCoupler_Devices.numberofAIC++;
+            gSharedMem.IOCoupler_Devices.numberOfInputSlaves++;
+            info->input_index = gSharedMem.IOCoupler_Devices.numberOfInputSlaves;
             info->output_index = 0;
             break;
 
         case IO_DEVICE_TYPE_AIV8:
-            IOCoupler_Devices.numberofAIV++;
-            IOCoupler_Devices.numberOfInputSlaves++;
-            info->input_index = IOCoupler_Devices.numberOfInputSlaves;
+            gSharedMem.IOCoupler_Devices.numberofAIV++;
+            gSharedMem.IOCoupler_Devices.numberOfInputSlaves++;
+            info->input_index = gSharedMem.IOCoupler_Devices.numberOfInputSlaves;
             info->output_index = 0;
             break;
 
         case IO_DEVICE_TYPE_RTDY:
-            IOCoupler_Devices.numberofRTDY++;
-            IOCoupler_Devices.numberOfInputSlaves++;
-            info->input_index = IOCoupler_Devices.numberOfInputSlaves;
+            gSharedMem.IOCoupler_Devices.numberofRTDY++;
+            gSharedMem.IOCoupler_Devices.numberOfInputSlaves++;
+            info->input_index = gSharedMem.IOCoupler_Devices.numberOfInputSlaves;
             info->output_index = 0;
             break;
 
         case IO_DEVICE_TYPE_RTDB:
-            IOCoupler_Devices.numberofRTDB++;
-            IOCoupler_Devices.numberOfInputSlaves++;
-            info->input_index = IOCoupler_Devices.numberOfInputSlaves;
+            gSharedMem.IOCoupler_Devices.numberofRTDB++;
+            gSharedMem.IOCoupler_Devices.numberOfInputSlaves++;
+            info->input_index = gSharedMem.IOCoupler_Devices.numberOfInputSlaves;
             info->output_index = 0;
             break;
 
@@ -165,36 +167,47 @@ static void IOCoupler_put_slave_info(IO_SlaveInfo *info)
             break;
     }
 
-    IOCoupler_Devices.slaveInfo[IOCoupler_Devices.numberOfSlaves++] = *info;
+    gSharedMem.IOCoupler_Devices.slaveInfo[gSharedMem.IOCoupler_Devices.numberOfSlaves++] = *info;
+    app_ipc_sharemem_unlock();
 }
 
 static void IOCoupler_update_slave_info_hw_fw(uint8_t nodeId, const char *hw_ver, const char *fw_ver)
 {
+    app_ipc_sharemem_lock();
     // DebugP_log("Updating HW/FW %u for node %u | hwver %s | fwver %s\r\n", IOCoupler_Devices.slaveInfo[nodeId-1].nodeId, nodeId, hw_ver, fw_ver);
-    for (uint8_t i = 0; i < IOCoupler_Devices.numberOfSlaves; i++) {
-        if (IOCoupler_Devices.slaveInfo[i].nodeId == nodeId) {
+    for (uint8_t i = 0; i < gSharedMem.IOCoupler_Devices.numberOfSlaves; i++) {
+        if (gSharedMem.IOCoupler_Devices.slaveInfo[i].nodeId == nodeId) {
             // DebugP_log("Found slave info for node %u, updating HW/FW\r\n", nodeId);
             if(hw_ver){
-                strncpy(IOCoupler_Devices.slaveInfo[i].hw_version, hw_ver, GESPANT_HW_VER_SIZE);    
+                strncpy(
+                    (char *)gSharedMem.IOCoupler_Devices.slaveInfo[i].hw_version,
+                    hw_ver,
+                    GESPANT_HW_VER_SIZE
+                );
             }
             if(fw_ver){
-                strncpy(IOCoupler_Devices.slaveInfo[i].fw_version, fw_ver, GESPANT_FW_VER_SIZE);    
+                strncpy(
+                    (char *)gSharedMem.IOCoupler_Devices.slaveInfo[i].fw_version,
+                    fw_ver,
+                    GESPANT_FW_VER_SIZE
+                );
             }
         }
     }
+    app_ipc_sharemem_unlock();
 }
 
 static void IOCoupler_print_result(void)
 {
     DebugP_log("\n--- IO Coupler Scan Results ---\r\n");
-    DebugP_log("Total Slaves Found: %u\r\n", IOCoupler_Devices.numberOfSlaves);
+    DebugP_log("Total Slaves Found: %u\r\n", gSharedMem.IOCoupler_Devices.numberOfSlaves);
 
-    if (IOCoupler_Devices.numberOfSlaves == 0) {
+    if (gSharedMem.IOCoupler_Devices.numberOfSlaves == 0) {
         DebugP_log("No IO slaves detected on the bus.\r\n");
     } else {
-        for (uint8_t i = 0; i < IOCoupler_Devices.numberOfSlaves; i++) {
-            // Using pointer for cleaner access
-            const IO_SlaveInfo *slave = &IOCoupler_Devices.slaveInfo[i];
+        for (uint8_t i = 0; i < gSharedMem.IOCoupler_Devices.numberOfSlaves; i++) {
+
+            const IO_SlaveInfo *slave = (IO_SlaveInfo *)&gSharedMem.IOCoupler_Devices.slaveInfo[i];
             char sn_str[32];
 
             snprintf(sn_str, sizeof(sn_str), "%08X", (unsigned int)slave->serialNumber);
@@ -309,7 +322,11 @@ void IOCoupler_scan_task(CO_Data *d)
     {
         case SCAN_IDLE:
             DebugP_log("Scan started!\r\n");
-            IOCoupler_Devices.numberOfSlaves = 0;
+            
+            app_ipc_sharemem_lock();
+            gSharedMem.IOCoupler_Devices.numberOfSlaves = 0;
+            app_ipc_sharemem_unlock();
+
             currentNode = 1;
             scanState = SCAN_READ_VENDOR;
             break;
@@ -533,11 +550,11 @@ void _ODMaster_configure_PDO(CO_Data *d, IO_SlaveInfo *io_info)
             ptrTable->bSubCount > 1 &&
             ptrTable->pSubindex[1].pObject)
         {
-            io_info->d_ptr = ptrTable->pSubindex[1].pObject;
+            IO_slave_data[io_info->nodeId-1].d_ptr = ptrTable->pSubindex[1].pObject;
         }
         else
         {
-            io_info->d_ptr = NULL; /* fail-safe */
+            IO_slave_data[io_info->nodeId-1].d_ptr = NULL; /* fail-safe */
         }
     }else if(io_info->productCode == IO_DEVICE_TYPE_DO16){
         // Master_ TPDOx → Slave RPDOx
@@ -576,11 +593,11 @@ void _ODMaster_configure_PDO(CO_Data *d, IO_SlaveInfo *io_info)
             ptrTable->bSubCount > 1 &&
             ptrTable->pSubindex[1].pObject)
         {
-            io_info->d_ptr = ptrTable->pSubindex[1].pObject;
+            IO_slave_data[io_info->nodeId-1].d_ptr = ptrTable->pSubindex[1].pObject;
         }
         else
         {
-            io_info->d_ptr = NULL; /* fail-safe */
+            IO_slave_data[io_info->nodeId-1].d_ptr = NULL; /* fail-safe */
         }
     }
     else if(io_info->productCode == IO_DEVICE_TYPE_AIC8 || io_info->productCode == IO_DEVICE_TYPE_AIV8)
@@ -615,11 +632,11 @@ void _ODMaster_configure_PDO(CO_Data *d, IO_SlaveInfo *io_info)
                 ptrTable->bSubCount > 1 &&
                 ptrTable->pSubindex[data_index].pObject)
             {
-                io_info->a_ptr[i] = ptrTable->pSubindex[data_index].pObject;
+                IO_slave_data[io_info->nodeId-1].a_ptr[i] = ptrTable->pSubindex[data_index].pObject;
             }
             else
             {
-                io_info->a_ptr[i] = NULL; /* fail-safe */
+                IO_slave_data[io_info->nodeId-1].a_ptr[i] = NULL; /* fail-safe */
             }
 
             data_index++;
@@ -665,11 +682,11 @@ void _ODMaster_configure_PDO(CO_Data *d, IO_SlaveInfo *io_info)
                 ptrTable->bSubCount > 1 &&
                 ptrTable->pSubindex[data_index].pObject)
             {
-                io_info->a_ptr[i] = ptrTable->pSubindex[data_index].pObject;
+                IO_slave_data[io_info->nodeId-1].a_ptr[i] = ptrTable->pSubindex[data_index].pObject;
             }
             else
             {
-                io_info->a_ptr[i] = NULL; /* fail-safe */
+                IO_slave_data[io_info->nodeId-1].a_ptr[i] = NULL; /* fail-safe */
             }
 
             data_index++;
@@ -714,11 +731,11 @@ void _ODMaster_configure_PDO(CO_Data *d, IO_SlaveInfo *io_info)
                 ptrTable->bSubCount > 1 &&
                 ptrTable->pSubindex[data_index].pObject)
             {
-                io_info->a_ptr[i] = ptrTable->pSubindex[data_index].pObject;
+                IO_slave_data[io_info->nodeId-1].a_ptr[i] = ptrTable->pSubindex[data_index].pObject;
             }
             else
             {
-                io_info->a_ptr[i] = NULL; /* fail-safe */
+                IO_slave_data[io_info->nodeId-1].a_ptr[i] = NULL; /* fail-safe */
             }
 
             data_index++;
@@ -738,7 +755,7 @@ void ODMaster_configure_PDO(CO_Data *d)
 {
     UNS32 size32 = sizeof(UNS32);
     UNS32 size8  = sizeof(UNS8);
-    UNS8  entry  = IOCoupler_Devices.numberOfSlaves;
+    UNS8  entry  = gSharedMem.IOCoupler_Devices.numberOfSlaves;
     UNS32 _Slave_Prod_Heartbeat_T=GET_SLAVE_PROD_HEARTBEAT_CONSUMER;
     UNS32 sync_value = 0;   /* 0 = SYNC disabled */
 
@@ -768,9 +785,9 @@ void ODMaster_configure_PDO(CO_Data *d)
 
     // DebugP_log(" ---------ODMaster_configure_PDO------------\r\n");
     for (int i = 0; i < entry; i++) {
-        _ODMaster_configure_PDO(d, &IOCoupler_Devices.slaveInfo[i]);
+        _ODMaster_configure_PDO(d, (IO_SlaveInfo *)&gSharedMem.IOCoupler_Devices.slaveInfo[i]);
 
-        UNS8 nodeId = IOCoupler_Devices.slaveInfo[i].nodeId;
+        UNS8 nodeId = gSharedMem.IOCoupler_Devices.slaveInfo[i].nodeId;
 
         /* Heartbeat time (ms) | Node-ID */
         UNS32 Master__Cons_Heartbeat_T =
@@ -791,8 +808,8 @@ void ODMaster_configure_PDO(CO_Data *d)
     }
     // DebugP_log(" -------------------------------------------\r\n");
 
-    if (IOCoupler_Devices.numberOfInputSlaves > 0) {
-        int offset = IOCoupler_Devices.numberOfInputSlaves - 1;
+    if (gSharedMem.IOCoupler_Devices.numberOfInputSlaves > 0) {
+        int offset = gSharedMem.IOCoupler_Devices.numberOfInputSlaves - 1;
         
         d->lastIndex->PDO_RCV     = d->firstIndex->PDO_RCV + offset;
         d->lastIndex->PDO_RCV_MAP = d->firstIndex->PDO_RCV_MAP + offset;
@@ -801,8 +818,8 @@ void ODMaster_configure_PDO(CO_Data *d)
         d->lastIndex->PDO_RCV_MAP = d->firstIndex->PDO_RCV_MAP;
     }
 
-    if (IOCoupler_Devices.numberOfOutputSlaves > 0) {
-        int offset = IOCoupler_Devices.numberOfOutputSlaves - 1;
+    if (gSharedMem.IOCoupler_Devices.numberOfOutputSlaves > 0) {
+        int offset = gSharedMem.IOCoupler_Devices.numberOfOutputSlaves - 1;
         
         d->lastIndex->PDO_TRS     = d->firstIndex->PDO_TRS + offset;
         d->lastIndex->PDO_TRS_MAP = d->firstIndex->PDO_TRS_MAP + offset;
@@ -813,7 +830,10 @@ void ODMaster_configure_PDO(CO_Data *d)
 }
 
 void IOCoupler_reset(CO_Data *d){
-    memset(&IOCoupler_Devices, 0, sizeof(IOCoupler_Devices));
+    app_ipc_sharemem_lock();
+    memset((IOCoupler_Device *)&gSharedMem.IOCoupler_Devices, 0, sizeof(gSharedMem.IOCoupler_Devices));
+    app_ipc_sharemem_unlock();
+
     ODMaster_Init_PDO(d);
     scanState = SCAN_IDLE;
 }
