@@ -50,6 +50,28 @@
                     ]
                 }
             ]
+        },
+        {
+            "name": "Core1_CouplerECAT_AM243",
+            "type": "ccs-debug",
+            "request": "launch",
+            "projectInfo": {
+                "name": "Core1_CouplerECAT_AM243",
+                "resourceId": "/Core1_CouplerECAT_AM243"
+            },
+            "connections": [
+                {
+                    "name": "Texas Instruments XDS110 USB Debug Probe",
+                    "cores": [
+                        {
+                            "name": "MAIN_Cortex_R5_0_0",
+                            "debuggerSettings": {
+                                "data": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\" ?>\n<PropertyValues/>\n"
+                            }
+                        }
+                    ]
+                }
+            ]
         }
     ]
 }

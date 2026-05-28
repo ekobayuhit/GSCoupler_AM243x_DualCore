@@ -92,9 +92,6 @@ extern PRUICSS_Handle prusshandle;
 Board_IDInfo boardInfo;
 #endif
 
-// extern bool isMaster_running(void);
-// extern uint8_t getNumIOSlave(void);
-
 // Static variables and pointers used in this example.
 
 static EI_API_ADP_T*           adapter_s  = NULL;

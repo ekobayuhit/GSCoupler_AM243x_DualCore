@@ -119,17 +119,10 @@ int find_slave_index_by_nodeId(uint8_t nodeId)
 /* ========================================================= */
 /* Data synchronization                                      */
 /* ========================================================= */
-bool isMaster_running(void){
-	return ( (getState(&Master_Data) == Operational) ? true : false );
-}
-
-uint8_t getNumIOSlave(void){
-	return gSharedMem.IOCoupler_Devices.numberOfSlaves;
-}
-
 void UpdateInputProcessImage(void)
 {
     app_ipc_sharemem_lock();
+
     for (int i = 0; i < gSharedMem.IOCoupler_Devices.numberOfSlaves; i++)
     {
         IO_SlaveInfo *s = (IO_SlaveInfo *)&gSharedMem.IOCoupler_Devices.slaveInfo[i];
@@ -215,6 +208,7 @@ void BuildProcessImage(void)
     uint16_t outOffset = 0;
 
 	app_ipc_sharemem_lock();
+
     for (int i = 0; i < gSharedMem.IOCoupler_Devices.numberOfSlaves; i++)
     {
         IO_SlaveInfo *s = (IO_SlaveInfo *)&gSharedMem.IOCoupler_Devices.slaveInfo[i];
@@ -244,6 +238,125 @@ void BuildProcessImage(void)
                 break;
         }
     }
+	
+	app_ipc_sharemem_unlock();
+}
+
+/******************************************************************************
+ * Sync EtherCAT + CANopen Input Process Image
+ *
+ * Copy data:
+ *
+ * CANopen Slave Object Dictionary
+ *                ->
+ * EtherCAT Input Process Image Buffer
+ *
+ ******************************************************************************/
+void GS_APP_SyncInputProcessImage(void)
+{
+    uint16_t i;
+    IO_SlaveInfo *pSlave;
+
+	app_ipc_sharemem_lock();
+
+    for(i = 0U; i < gSharedMem.IOCoupler_Devices.numberOfSlaves; i++)
+    {
+        pSlave = &gSharedMem.IOCoupler_Devices.slaveInfo[i];
+
+        /**********************************************************************
+         * DIGITAL INPUT MODULE
+         **********************************************************************/
+        if(pSlave->productCode == IO_DEVICE_TYPE_DI16)
+        {
+            if(IO_slave_data[i].d_ptr != NULL)
+            {
+                memcpy(
+                    (void *)&gSharedMem.buff_in[(pSlave->input_index-1)*IO_ANALOG_MODULE_BYTESIZE],
+                    IO_slave_data[i].d_ptr,
+                    IO_DIGITAL_MODULE_BYTESIZE);
+            }
+        }
+        
+        /**********************************************************************
+         * ANALOG INPUT MODULE
+         **********************************************************************/
+        else if((pSlave->productCode == IO_DEVICE_TYPE_AIC8) ||
+                (pSlave->productCode == IO_DEVICE_TYPE_AIV8))
+        {
+            uint16_t ch;
+
+            for(ch = 0U; ch < NUM_SUB_INDEX_DATA; ch++)
+            {
+                if(IO_slave_data[i].a_ptr[ch] != NULL)
+                {
+                    memcpy(
+                        (void *)&gSharedMem.buff_in[((pSlave->input_index-1)*IO_ANALOG_MODULE_BYTESIZE) + (ch * 2U)],
+                        IO_slave_data[i].a_ptr[ch],
+                        IO_ANALOG_BYTES_PER_CHANNEL);
+                }
+            }
+        }
+    }
+
+	app_ipc_sharemem_unlock();
+}
+
+/******************************************************************************
+ * Sync EtherCAT Output Process Image
+ *
+ * Copy data:
+ *
+ * EtherCAT Output Process Image Buffer
+ *                ->
+ * CANopen Slave Object Dictionary
+ *
+ ******************************************************************************/
+void GS_APP_SyncOutputProcessImage(void)
+{
+    uint16_t i;
+    IO_SlaveInfo *pSlave;
+
+	app_ipc_sharemem_lock();
+
+    for(i = 0U; i < gSharedMem.IOCoupler_Devices.numberOfSlaves; i++)
+    {
+        pSlave = &gSharedMem.IOCoupler_Devices.slaveInfo[i];
+
+        /**********************************************************************
+         * DIGITAL OUTPUT MODULE
+         **********************************************************************/
+        if(pSlave->productCode == IO_DEVICE_TYPE_DO16)
+        {
+            if(IO_slave_data[i].d_ptr != NULL)
+            {
+                memcpy(
+                    IO_slave_data[i].d_ptr,
+                    (const void *)&gSharedMem.buff_out[(pSlave->output_index-1)*IO_ANALOG_MODULE_BYTESIZE],
+                    IO_DIGITAL_MODULE_BYTESIZE);
+            }
+        }
+
+        /**********************************************************************
+         * ANALOG OUTPUT MODULE
+         **********************************************************************/
+        else if((pSlave->productCode == IO_DEVICE_TYPE_AOC8) ||
+                (pSlave->productCode == IO_DEVICE_TYPE_AOV8))
+        {
+            uint16_t ch;
+
+            for(ch = 0U; ch < NUM_SUB_INDEX_DATA; ch++)
+            {
+                if(IO_slave_data[i].a_ptr[ch] != NULL)
+                {
+                    memcpy(
+                        IO_slave_data[i].a_ptr[ch],
+                        (const void *)&gSharedMem.buff_out[((pSlave->output_index-1)*IO_ANALOG_MODULE_BYTESIZE) + (ch * 2U)],
+                        IO_ANALOG_BYTES_PER_CHANNEL);
+                }
+            }
+        }
+    }
+
 	app_ipc_sharemem_unlock();
 }
 
@@ -359,9 +472,6 @@ void SendPDOLoop(void *args)
 	
 	while (1)
 	{
-		if(gSharedMem.ipc_sys.active_protocol == IOCOUPLER_ECAT){
-			vTaskSuspend(NULL);
-		}
 #if (ACTIVE_PROTOCOL == IOCOUPLER_MODBUSTCP)
 		if(gSharedMem.ipc_sys.active_protocol == IOCOUPLER_MODBUSTCP){
 			while(1){
@@ -378,7 +488,14 @@ void SendPDOLoop(void *args)
 			/* Read physical IO → process image */
 			UpdateInputProcessImage();
 		}
+		else if(gSharedMem.ipc_sys.active_protocol == IOCOUPLER_ECAT){
+			/* Write outputs → physical IO */
+			GS_APP_SyncOutputProcessImage();
 
+			/* Read physical IO → process image */
+			GS_APP_SyncInputProcessImage();
+		}
+		
 		for(int i = 0; i < gSharedMem.IOCoupler_Devices.numberOfSlaves; i++){
 			/* only DO16 devices */
 			if (gSharedMem.IOCoupler_Devices.slaveInfo[i].productCode != IO_DEVICE_TYPE_DO16)
@@ -461,11 +578,7 @@ void Master_preOperational(CO_Data* d)
 
 	masterSendNMTstateChange (d, 0x00, NMT_Start_Node);
 	
-    if( (gSharedMem.ipc_sys.active_protocol == IOCOUPLER_ETHERNETIP) ||
-		(gSharedMem.ipc_sys.active_protocol == IOCOUPLER_ECAT) )
-	{
-		BuildProcessImage();
-	}
+    BuildProcessImage();
 
 	vTaskDelay(100);
 	

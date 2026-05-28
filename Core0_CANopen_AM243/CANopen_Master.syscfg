@@ -58,15 +58,8 @@ const mcan_v0_template1 = mcan_v0_template.addInstance({}, false);
 mcan_v0_template1.$name = "drivers_mcan_v0_mcan_v0_template0";
 mcan1.child             = mcan_v0_template1;
 
-debug_log.enableMemLog  = true;
-debug_log.enableCssLog  = false;
-debug_log.enableUartLog = true;
-debug_log.uartLog.$name = "CONFIG_UART0";
-
-const uart_v0_template  = scripting.addModule("/drivers/uart/v0/uart_v0_template", {}, false);
-const uart_v0_template1 = uart_v0_template.addInstance({}, false);
-uart_v0_template1.$name = "drivers_uart_v0_uart_v0_template0";
-debug_log.uartLog.child = uart_v0_template1;
+debug_log.enableMemLog = true;
+debug_log.enableCssLog = false;
 
 mpu_armv71.$name             = "CONFIG_MPU_REGION0";
 mpu_armv71.size              = 31;
@@ -265,8 +258,5 @@ section11.output_section[0].alignment = 0;
  * version of the tool will not impact the pinmux you originally saw.  These lines can be completely deleted in order to
  * re-solve from scratch.
  */
-mcan1.MCAN.RX.$suggestSolution              = "MCAN0_RX";
-mcan1.MCAN.TX.$suggestSolution              = "MCAN0_TX";
-debug_log.uartLog.UART.$suggestSolution     = "USART0";
-debug_log.uartLog.UART.RXD.$suggestSolution = "UART0_RXD";
-debug_log.uartLog.UART.TXD.$suggestSolution = "UART0_TXD";
+mcan1.MCAN.RX.$suggestSolution = "MCAN0_RX";
+mcan1.MCAN.TX.$suggestSolution = "MCAN0_TX";

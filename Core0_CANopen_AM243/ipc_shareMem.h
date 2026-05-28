@@ -31,6 +31,8 @@
 #define GESPANT_VENDOR_ID   (1524)
 #define GESPANT_HW_VER_SIZE (5)   //bytes char + null terminator
 #define GESPANT_FW_VER_SIZE (7)   //bytes
+
+#define NUM_SUB_INDEX_DATA  8U
 /******************************************************************/
 #define DI_GET(v, ch)   (((v).d_all >> ((ch)-1)) & 0x01)
 #define DI_SET(v, ch)   ((v).d_all |=  (1U << ((ch)-1)))
