@@ -45,6 +45,17 @@ MSRAM
         MSRAM : ORIGIN = 0x700CA000, LENGTH = 0x106000
         (Range 700CA000 - 701CFFFF; Size 1.024 MB + 24 KB)
 --------------------------------------------------------------
+USER_SHM_MEM
+    USER_SHM_MEM : ORIGIN = 0x701D0000, LENGTH = 0x4000
+    (Range 0x701D0000 - 0x701D3FFF; 16 KB)
+--------------------------------------------------------------
+LOG_SHM_MEM
+    LOG_SHM_MEM : ORIGIN = 0x701D4000, LENGTH = 0x4000
+    (Range 0x701D4000 - 0x701D7FFF; 16 KB)
+--------------------------------------------------------------
+RTOS_NORTOS_IPC_SHM_MEM
+    RTOS_NORTOS_IPC_SHM_MEM : ORIGIN = 0x701D8000, LENGTH = 0x8000
+    (Range 0x701D8000 - 0x701DBFFF; 32 KB)
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 FLASH (16MB)
     Core0
