@@ -76,6 +76,9 @@
 #define OFFSET_INDEX_OUTPUT MAX_INPUT_SIZE_BYTES
 extern volatile ipc_data_t gSharedMem;
 
+uint8_t localOut[MAX_OUTPUT_SIZE_BYTES];
+uint8_t localIn[MAX_INPUT_SIZE_BYTES];
+
 static uint16_t GENERIC_DEVICE_extendedStatus_s[255] = {0};
 
 static bool GENERIC_DEVICE_init               (EI_API_ADP_T      *pAdapter, EI_API_CIP_NODE_T *pCipNode);
@@ -244,23 +247,44 @@ void GENERIC_DEVICE_run(EI_API_CIP_NODE_T* pCipNode)
     if( (gSharedMem.ipc_sys.master_state == 1) && 
         (gSharedMem.IOCoupler_Devices.numberOfSlaves > 0) )
     {
-        
-        app_ipc_sharemem_lock();
-        for(int attr = 0; attr < MAX_OUTPUT_SIZE_BYTES; attr++)
+         /*
+         * ==========================================
+         * Read EtherNet/IP Outputs
+         * ==========================================
+         */
+        for (int attr = 0; attr < MAX_OUTPUT_SIZE_BYTES; attr++)
         {
-            errCode = EI_API_CIP_getAttr_byte(pCipNode, 0x0070, 0x0001, attr + CFG_PROFILE_GENERIC_DEVICE_VENDOR_ATTRIBUTE_OUTPUT_ID, &gSharedMem.buff_out[attr]);
+            errCode = EI_API_CIP_getAttr_byte(
+                pCipNode,
+                0x0070,
+                0x0001,
+                attr + CFG_PROFILE_GENERIC_DEVICE_VENDOR_ATTRIBUTE_OUTPUT_ID,
+                &localOut[attr]);
         }
+
+        app_ipc_sharemem_lock();
+        memcpy((uint8_t *)gSharedMem.buff_out, localOut, MAX_OUTPUT_SIZE_BYTES);
         app_ipc_sharemem_unlock();
 
         app_ipc_sharemem_lock();
-        for(int attr = 0; attr < MAX_INPUT_SIZE_BYTES; attr++)
-        {
-            EI_API_CIP_setAttr_byte(pCipNode, 0x0070, 0x0001, attr + CFG_PROFILE_GENERIC_DEVICE_VENDOR_ATTRIBUTE_INPUT_ID, gSharedMem.buff_in[attr]);
-        }
+        memcpy(localIn, (uint8_t *)gSharedMem.buff_in, MAX_INPUT_SIZE_BYTES);
         app_ipc_sharemem_unlock();
+
+        /*
+         * ==========================================
+         * Update EtherNet/IP Inputs
+         * ==========================================
+         */
+        for (int attr = 0; attr < MAX_INPUT_SIZE_BYTES; attr++)
+        {
+            EI_API_CIP_setAttr_byte(
+                pCipNode,
+                0x0070,
+                0x0001,
+                attr + CFG_PROFILE_GENERIC_DEVICE_VENDOR_ATTRIBUTE_INPUT_ID,
+                localIn[attr]);
+        }
     }
-
-    // Master_print_io_info();
 }
 
 void GENERIC_DEVICE_Create_IO_Map(EI_API_CIP_NODE_T* pCipNode, uint16_t classId, uint16_t instanceId)
@@ -404,15 +428,14 @@ static void GENERIC_DEVICE_cipGenerateContent(EI_API_CIP_NODE_T* cipNode,
     uint16_t attribID = CFG_PROFILE_GENERIC_DEVICE_VENDOR_ATTRIBUTE_OUTPUT_ID;
     for (int i = 0; i < MAX_OUTPUT_SIZE_BYTES; i++)
     {
-        EI_API_CIP_SAttr_t attr;
         OSAL_MEMORY_memset(&attr, 0, sizeof(attr));
         attr.id = attribID;
         attr.edt = EI_API_CIP_eEDT_BYTE;
         attr.accessRule = EI_API_CIP_eAR_GET_AND_SET;
-        attr.pvValue = &gSharedMem.buff_out[i];
+        attr.pvValue = (uint8_t *)&gSharedMem.buff_out[i];
 
-        EI_API_CIP_addInstanceAttr(cipNode, classId, instanceId, &attr);
-        EI_API_CIP_setInstanceAttr(cipNode, classId, instanceId, &attr);
+        errCode = EI_API_CIP_addInstanceAttr(cipNode, classId, instanceId, &attr);
+        errCode += EI_API_CIP_setInstanceAttr(cipNode, classId, instanceId, &attr);
 
         attribID++;
     }
@@ -420,15 +443,14 @@ static void GENERIC_DEVICE_cipGenerateContent(EI_API_CIP_NODE_T* cipNode,
     attribID = CFG_PROFILE_GENERIC_DEVICE_VENDOR_ATTRIBUTE_INPUT_ID;
     for (int i = 0; i < MAX_INPUT_SIZE_BYTES; i++)
     {
-        EI_API_CIP_SAttr_t attr;
         OSAL_MEMORY_memset(&attr, 0, sizeof(attr));
         attr.id = attribID;
         attr.edt = EI_API_CIP_eEDT_BYTE;
         attr.accessRule = EI_API_CIP_eAR_GET;
-        attr.pvValue = &gSharedMem.buff_in[i];
+        attr.pvValue = (uint8_t *)&gSharedMem.buff_in[i];
 
-        EI_API_CIP_addInstanceAttr(cipNode, classId, instanceId, &attr);
-        EI_API_CIP_setInstanceAttr(cipNode, classId, instanceId, &attr);
+        errCode = EI_API_CIP_addInstanceAttr(cipNode, classId, instanceId, &attr);
+        errCode += EI_API_CIP_setInstanceAttr(cipNode, classId, instanceId, &attr);
 
         attribID++;
     }

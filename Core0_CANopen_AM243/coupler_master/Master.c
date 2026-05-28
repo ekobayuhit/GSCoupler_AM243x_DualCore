@@ -871,7 +871,8 @@ static void stop_master(void) {
 
 static void print_master_info(void){
 	DebugP_log("-------------------------------------\r\n");
-	DebugP_log("Master FW Version %s\r\n", MASTER_FW_VERSION);
+	DebugP_log("%s\r\n", MASTER_TYPE);
+	DebugP_log("FW Version %s\r\n", MASTER_FW_VERSION);
 	DebugP_log("Max IO Devices %d\r\n", MAX_IO_DEVICES);
 	DebugP_log("-------------------------------------\r\n");
 }
@@ -1021,9 +1022,6 @@ void master_loop(void *args)
 	// Start timer thread
 	StartTimerLoop(NULL);
 	
-#if 0 //TEST RPDO and TPDO
-	SendPDOLoop(NULL);
-#endif
 	while(1){		
 		App_printCpuLoad();
 		
@@ -1035,9 +1033,7 @@ void master_loop(void *args)
 
 		// print_all_io_values();
 
-		for(int i = 0; i < 50; i++) {
-			vTaskDelay(pdMS_TO_TICKS(100));
-		}
+		vTaskDelay(pdMS_TO_TICKS(1000));
 
 #if 0 //TEST
 		Message m;

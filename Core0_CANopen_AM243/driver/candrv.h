@@ -17,7 +17,7 @@
 #define MCAN_BAUD_1000K         (2)
 #define MCAN_BAUD_5000K         (3)
 
-#define APP_MCAN_MODE           (MCAN_MODE_POLLING)
+#define APP_MCAN_MODE           (MCAN_MODE_INTERRUPT)
 #define APP_MCAN_BASE_ADDR      (CONFIG_MCAN0_BASE_ADDR)
 #define APP_MCAN_INTR_NUM       (CONFIG_MCAN0_INTR)
 

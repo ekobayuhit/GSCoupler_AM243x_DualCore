@@ -279,7 +279,7 @@ static int WEB_SERVER_processGetAndRespond(int clientFd_p, const char *const pBu
         ret |= send(clientFd_p, jsonBuf, strlen(jsonBuf), 0);
 
         memset(jsonBuf, 0, sizeof(jsonBuf));
-        sprintf(jsonBuf, page_iomap, MASTER_TYPE, MASTER_FW_VERSION);
+        sprintf(jsonBuf, page_iomap, INDS_COMM_TYPE, INDS_COMM_FW_VERSION);
         ret |= send(clientFd_p, jsonBuf, strlen(jsonBuf), 0);
     
         // int svg_image_len = sizeof(svg_image);
@@ -472,7 +472,7 @@ static int WEB_SERVER_processGetAndRespond(int clientFd_p, const char *const pBu
     }
     else if ((strncmp(&pBuf_p[0], "/io-data", 8) == 0))
     {
-        int len = generate_io_table(jsonBuf, MAX_HTML_SIZE, &gSharedMem.IOCoupler_Devices);
+        int len = generate_io_table(jsonBuf, MAX_HTML_SIZE, (IOCoupler_Device *)&gSharedMem.IOCoupler_Devices);
 
         if (len > 0)
         {

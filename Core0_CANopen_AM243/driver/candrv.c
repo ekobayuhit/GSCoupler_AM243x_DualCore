@@ -78,7 +78,7 @@ static void    App_mcanCompareMsg(MCAN_TxBufElement *txMsg,
                                   MCAN_RxBufElement *rxMsg);
 
 QueueHandle_t xMcanRxQueue;
-static Bool can_lock = 0;
+volatile Bool can_lock = 0;
 
 uint8_t McanRxQueueData[ MCAN_RX_QUEUE_LENGTH * MCAN_RX_ITEM_SIZE ];
 
@@ -301,46 +301,151 @@ void canRecv_Task(void *args)
         /* Wait for Rx completion */
         SemaphoreP_pend(&gMcanRxDoneSem, SystemP_WAIT_FOREVER);
         
-        DebugP_log("[MCAN] Recv \r\n");
+        // DebugP_log("[MCAN] Recv \r\n");
         
         /* Checking for Rx Errors */
         MCAN_getErrCounters(gMcanBaseAddr, &errCounter);
+        if ((errCounter.recErrCnt >= REC_THRESHOLD) ||
+            (errCounter.canErrLogCnt >= CEL_THRESHOLD))
+        {
+            DebugP_log("ERROR: REC=%d TEC=%d CEL=%d\r\n",
+                        errCounter.recErrCnt,
+                        errCounter.transErrLogCnt,
+                        errCounter.canErrLogCnt);
+        }
         DebugP_assert((0U == errCounter.recErrCnt) &&
                       (0U == errCounter.canErrLogCnt));
 
-        /* Get the new data staus, indicates buffer num which received message */
-        MCAN_getNewDataStatus(gMcanBaseAddr, &newDataStatus);
-        MCAN_clearNewDataStatus(gMcanBaseAddr, &newDataStatus);
+        /* =========================================================
+        * FIFO0 RECEIVE
+        * =========================================================
+        */
+        fifoStatus.num = MCAN_RX_FIFO_NUM_0;
 
-        /* Select buffer and fifo number, Buffer is used in this app */
-        bufNum = 0U;
-        fifoNum = MCAN_RX_FIFO_NUM_0;
+        MCAN_getRxFIFOStatus(gMcanBaseAddr, &fifoStatus);
 
-        bitPos = (1U << bufNum);
-        if (bitPos == (newDataStatus.statusLow & bitPos))
+        while (fifoStatus.fillLvl > 0)
         {
-            MCAN_readMsgRam(gMcanBaseAddr, MCAN_MEM_TYPE_BUF, bufNum, fifoNum, &rxMsg);
+            /* Read message from FIFO0 */
+            MCAN_readMsgRam(
+                gMcanBaseAddr,
+                MCAN_MEM_TYPE_FIFO,
+                fifoStatus.getIdx,
+                MCAN_RX_FIFO_NUM_0,
+                &rxMsg);
 
-            m.cob_id = (rxMsg.id >> APP_MCAN_STD_ID_SHIFT) & 0x7FF;
-            m.rtr = rxMsg.rtr;
-            m.len = rxMsg.dlc;
-            memcpy(m.data, &rxMsg.data[0], m.len);
+            /* Acknowledge FIFO0 entry */
+            MCAN_writeRxFIFOAck(
+                gMcanBaseAddr,
+                MCAN_RX_FIFO_NUM_0,
+                fifoStatus.getIdx);
 
-            canDispatch(d, &m);
-
-        #if 1 
-            char data[2*8 + 1];
-            memset(data, 0, sizeof(data));
-            for (int i = 0; i < m.len; i++)
+            /* DLC protection */
+            if (rxMsg.dlc > 8)
             {
-                sprintf(&data[i*2], "%02x", m.data[i]);
+                MCAN_getRxFIFOStatus(gMcanBaseAddr, &fifoStatus);
+                continue;
             }
-            data[m.len*2] = '\0';
-            DebugP_log("[MCAN] canRecv id: 0x%x dlc %d data: 0x%s\r\n",
+
+            /* Convert MCAN frame -> CANopen message */
+            m.cob_id = (rxMsg.id >> APP_MCAN_STD_ID_SHIFT) & 0x7FF;
+            m.rtr    = rxMsg.rtr;
+            m.len    = rxMsg.dlc;
+
+            memcpy(m.data, rxMsg.data, m.len);
+
+            /* Push to queue */
+            xQueueSend(xMcanRxQueue, &m, 0);
+
+    #if APP_DEBUG_MCAN_RX
+            {
+                char data[2*8 + 1];
+
+                memset(data, 0, sizeof(data));
+
+                for (int i = 0; i < m.len; i++)
+                {
+                    sprintf(&data[i*2], "%02x", m.data[i]);
+                }
+
+                data[m.len*2] = '\0';
+
+                DebugP_log(
+                    "[MCAN][FIFO0] id:0x%x dlc:%d data:0x%s\r\n",
                     m.cob_id,
                     m.len,
                     data);
-        #endif
+            }
+    #endif
+
+            /* Refresh FIFO status */
+            MCAN_getRxFIFOStatus(gMcanBaseAddr, &fifoStatus);
+        }
+
+        /* =========================================================
+        * FIFO1 RECEIVE
+        * =========================================================
+        */
+        fifoStatus.num = MCAN_RX_FIFO_NUM_1;
+
+        MCAN_getRxFIFOStatus(gMcanBaseAddr, &fifoStatus);
+
+        while (fifoStatus.fillLvl > 0)
+        {
+            /* Read message from FIFO1 */
+            MCAN_readMsgRam(
+                gMcanBaseAddr,
+                MCAN_MEM_TYPE_FIFO,
+                fifoStatus.getIdx,
+                MCAN_RX_FIFO_NUM_1,
+                &rxMsg);
+
+            /* Acknowledge FIFO1 entry */
+            MCAN_writeRxFIFOAck(
+                gMcanBaseAddr,
+                MCAN_RX_FIFO_NUM_1,
+                fifoStatus.getIdx);
+
+            /* DLC protection */
+            if (rxMsg.dlc > 8)
+            {
+                MCAN_getRxFIFOStatus(gMcanBaseAddr, &fifoStatus);
+                continue;
+            }
+
+            /* Convert MCAN frame -> CANopen message */
+            m.cob_id = (rxMsg.id >> APP_MCAN_STD_ID_SHIFT) & 0x7FF;
+            m.rtr    = rxMsg.rtr;
+            m.len    = rxMsg.dlc;
+
+            memcpy(m.data, rxMsg.data, m.len);
+
+            /* Push to queue */
+            xQueueSend(xMcanRxQueue, &m, 0);
+
+    #if APP_DEBUG_MCAN_RX
+            {
+                char data[2*8 + 1];
+
+                memset(data, 0, sizeof(data));
+
+                for (int i = 0; i < m.len; i++)
+                {
+                    sprintf(&data[i*2], "%02x", m.data[i]);
+                }
+
+                data[m.len*2] = '\0';
+
+                DebugP_log(
+                    "[MCAN][FIFO1] id:0x%x dlc:%d data:0x%s\r\n",
+                    m.cob_id,
+                    m.len,
+                    data);
+            }
+    #endif
+
+            /* Refresh FIFO status */
+            MCAN_getRxFIFOStatus(gMcanBaseAddr, &fifoStatus);
         }
 #endif /* MCAN_MODE_INTERRUPT */
     }
@@ -484,7 +589,16 @@ static void canIntcfg(void){
 
 static void App_mcanEnableIntr(void)
 {
-    MCAN_enableIntr(gMcanBaseAddr, MCAN_INTR_MASK_ALL, (uint32_t)TRUE);
+    // MCAN_enableIntr(gMcanBaseAddr, MCAN_INTR_MASK_ALL, (uint32_t)TRUE);
+    MCAN_enableIntr(
+        gMcanBaseAddr,
+        MCAN_INTR_SRC_TRANS_COMPLETE |
+        MCAN_INTR_SRC_RX_FIFO0_NEW_MSG |
+        MCAN_INTR_SRC_RX_FIFO1_NEW_MSG |
+        MCAN_INTR_SRC_BUS_OFF_STATUS |
+        MCAN_INTR_SRC_PROTOCOL_ERR_ARB |
+        MCAN_INTR_SRC_PROTOCOL_ERR_DATA,
+        TRUE);
     MCAN_enableIntr(gMcanBaseAddr,
                     MCAN_INTR_SRC_RES_ADDR_ACCESS, (uint32_t)FALSE);
     /* Select Interrupt Line 0 */
@@ -511,8 +625,11 @@ static void App_mcanIntrISR(void *arg)
     /* If FIFO0/FIFO1 is used, then MCAN_INTR_SRC_DEDICATED_RX_BUFF_MSG macro
      * needs to be replaced by MCAN_INTR_SRC_RX_FIFO0_NEW_MSG/
      * MCAN_INTR_SRC_RX_FIFO1_NEW_MSG respectively */
-    if (MCAN_INTR_SRC_RX_FIFO0_NEW_MSG ==
-        (intrStatus & MCAN_INTR_SRC_DEDICATED_RX_BUFF_MSG))
+    // if (MCAN_INTR_SRC_RX_FIFO0_NEW_MSG ==
+    //     (intrStatus & MCAN_INTR_SRC_DEDICATED_RX_BUFF_MSG))
+    // {
+    if ( (intrStatus & MCAN_INTR_SRC_RX_FIFO0_NEW_MSG) ||
+         (intrStatus & MCAN_INTR_SRC_RX_FIFO1_NEW_MSG) )
     {
         SemaphoreP_post(&gMcanRxDoneSem);
     }

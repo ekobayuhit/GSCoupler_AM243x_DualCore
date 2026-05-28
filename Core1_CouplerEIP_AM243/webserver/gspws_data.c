@@ -5,6 +5,8 @@
 #include "ipc_shareMem.h"
 
 extern volatile ipc_data_t gSharedMem;
+extern uint8_t localOut[MAX_OUTPUT_SIZE_BYTES];
+extern uint8_t localIn[MAX_INPUT_SIZE_BYTES];
 
 // array size is 300
 const unsigned char gsp_favicon_ico[]  = {
@@ -73,18 +75,18 @@ int generate_io_table(char *html_out, int max_size, IOCoupler_Device *dev)
         /* ===== DIGITAL INPUT ===== */
         if (s->productCode == IO_DEVICE_TYPE_DI16)
         {
-            if (s->offset_index + sizeof(IO_DigitalValues) <= sizeof(gSharedMem.buff_in))
+            if (s->offset_index + sizeof(IO_DigitalValues) <= sizeof(localIn))
             {
-                dVal = (IO_DigitalValues *)&gSharedMem.buff_in[s->offset_index];
+                dVal = (IO_DigitalValues *)&localIn[s->offset_index];
             }
         }
         
         /* ===== DIGITAL OUTPUT ===== */
         else if (s->productCode == IO_DEVICE_TYPE_DO16)
         {
-            if (s->offset_index + sizeof(IO_DigitalValues) <= sizeof(gSharedMem.buff_out))
+            if (s->offset_index + sizeof(IO_DigitalValues) <= sizeof(localOut))
             {
-                dVal = (IO_DigitalValues *)&gSharedMem.buff_out[s->offset_index];
+                dVal = (IO_DigitalValues *)&localOut[s->offset_index];
             }
         }
 
@@ -109,9 +111,9 @@ int generate_io_table(char *html_out, int max_size, IOCoupler_Device *dev)
                 "<th>%d</th>"
                 "<td>%d</td>"
                 "<td>%s</td>"
-                "<td>%lu</td>"
-                "<td>%lu</td>"
-                "<td>%lu</td>"
+                "<td>%d</td>"
+                "<td>%d</td>"
+                "<td>%d</td>"
             "</tr>",
             s->nodeId,
             s->productCode,

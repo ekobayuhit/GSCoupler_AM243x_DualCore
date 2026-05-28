@@ -26,8 +26,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 #include "canfestival.h"
 
-#define MASTER_TYPE	        "GS-Coupler-EtherNet/IP"
-#define MASTER_FW_VERSION	"Alpha-1.0.0-050526"
+#define MASTER_TYPE	        "GS-Coupler-CanopenMaster"
+#define MASTER_FW_VERSION	"Alpha-1.0.0-280526"
 
 typedef void (*TaskCallback_t)(void *);
 
