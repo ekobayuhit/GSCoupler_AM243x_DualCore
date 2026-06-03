@@ -69,6 +69,7 @@ extern volatile ipc_data_t gSharedMem;
 extern const unsigned char gsp_favicon_ico[];
 extern const unsigned int gsp_favicon_ico_len;
 extern int generate_io_table(char *html_out, int max_size, IOCoupler_Device *dev);
+extern int generate_io_json(char *json_out, int max_size, IOCoupler_Device *dev);
 
 /*!
  *  \brief Application Web server task's stack.
@@ -81,6 +82,50 @@ static char jsonBuf[MAX_HTML_SIZE];
  *  \brief Application Web server task's object.
  */
 static TaskP_Object WEB_SERVER_taskObj_g = { 0 };
+
+static int send_IOSVG(int fd, const char *svg_data, size_t svg_len)
+{
+    char header[256];
+
+    int hlen = snprintf(header,
+                        sizeof(header),
+                        "HTTP/1.1 200 OK\r\n"
+                        "Content-Type: image/svg+xml\r\n"
+                        "Content-Length: %u\r\n"
+                        "Connection: close\r\n"
+                        "\r\n",
+                        (unsigned int)svg_len);
+
+    int ret = send(fd, header, hlen, 0);
+
+    if(ret < 0)
+    {
+        DebugP_log("send_IOSVG Header send failed %d\r\n", ret);
+        return -1;
+    }
+
+    size_t offset = 0;
+
+    while (offset < svg_len)
+    {
+        int sent = send(fd,
+                        (const char *)svg_data + offset,
+                        svg_len - offset > 1024 ? 1024 : (svg_len - offset),
+                        0);
+        DebugP_log("Sent SVG len=%u\r\n", (unsigned)sent);
+        if (sent < 0){
+            DebugP_log("SVG send failed %d\r\n", ret);
+            return -1;
+        }
+
+        if (sent == 0)
+            continue;
+
+        offset += sent;
+    }
+
+    return (int)offset;
+}
 
 /*!
 *  Function: WEB_SERVER_strError
@@ -263,44 +308,39 @@ static int WEB_SERVER_processGetAndRespond(int clientFd_p, const char *const pBu
     {
         ret = send(clientFd_p, response_200_content_html, strlen(response_200_content_html), 0);
         
+        ret |= send(clientFd_p, html_top, strlen(html_top), 0);
+        
         memset(jsonBuf, 0, sizeof(jsonBuf));
-        sprintf(jsonBuf, html_top, "getCpuLoad()", "active", "", "");
+        sprintf(jsonBuf, html_top_body, "getCpuLoad()", "active", "", "");
         ret |= send(clientFd_p, jsonBuf, strlen(jsonBuf), 0);
         
         ret |= send(clientFd_p, page_main, strlen(page_main), 0);
         ret |= send(clientFd_p, html_bottom, strlen(html_bottom), 0);
     }
-    else if ((strncmp(&pBuf_p[0], "/IO_Mapping.html HTTP/1.1\r\n", 21) == 0))
+    else if ((strncmp(&pBuf_p[0], "/IO_Mapping.html HTTP/1.1\r\n", 27) == 0))
     {
         ret = send(clientFd_p, response_200_content_html, strlen(response_200_content_html), 0);
         
+        ret |= send(clientFd_p, html_top_iopage, strlen(html_top_iopage), 0);
+
         memset(jsonBuf, 0, sizeof(jsonBuf));
-        sprintf(jsonBuf, html_top, "get_IOdata()", "", "active", "");
+        sprintf(jsonBuf, html_top_body, "", "", "active", "");
         ret |= send(clientFd_p, jsonBuf, strlen(jsonBuf), 0);
 
         memset(jsonBuf, 0, sizeof(jsonBuf));
         sprintf(jsonBuf, page_iomap, INDS_COMM_TYPE, INDS_COMM_FW_VERSION);
         ret |= send(clientFd_p, jsonBuf, strlen(jsonBuf), 0);
-    
-        // int svg_image_len = sizeof(svg_image);
-        // int totalSent = 0;
-        // while (totalSent < svg_image_len)
-        // {
-        //     int sent = send(clientFd_p, svg_image + totalSent,
-        //                     svg_image_len - totalSent, 0);
-        //     if (sent <= 0)
-        //         break;
-        //     totalSent += sent;
-        // }
-
+        
         ret |= send(clientFd_p, html_bottom, strlen(html_bottom), 0);
     }
     else if ((strncmp(&pBuf_p[0], "/Network.html HTTP/1.1\r\n", 21) == 0))
     {
         ret = send(clientFd_p, response_200_content_html, strlen(response_200_content_html), 0);
         
+        ret |= send(clientFd_p, html_top, strlen(html_top), 0);
+
         memset(jsonBuf, 0, sizeof(jsonBuf));
-        sprintf(jsonBuf, html_top, "", "", "", "active");
+        sprintf(jsonBuf, html_top_body, "", "", "", "active");
         ret |= send(clientFd_p, jsonBuf, strlen(jsonBuf), 0);
         
         ret |= send(clientFd_p, page_network, strlen(page_network), 0);
@@ -310,6 +350,11 @@ static int WEB_SERVER_processGetAndRespond(int clientFd_p, const char *const pBu
     {
         ret = send(clientFd_p, response_200_content_css, strlen(response_200_content_css), 0);
         ret |= send(clientFd_p, style_css, strlen(style_css), 0);
+    }
+    else if (strncmp(pBuf_p, "/iomap.css HTTP/1.1\r\n", 21) == 0)
+    {
+        ret = send(clientFd_p, response_200_content_css, strlen(response_200_content_css), 0);
+        ret |= send(clientFd_p, style_iomap_css, strlen(style_iomap_css), 0);
     }
     else if ((strncmp(&pBuf_p[0], "/main.js HTTP/1.1\r\n", 19) == 0))
     {
@@ -330,13 +375,22 @@ static int WEB_SERVER_processGetAndRespond(int clientFd_p, const char *const pBu
             ret = send(clientFd_p, wsio_js, strlen(wsio_js), 0);
         }
     }
+    else if ((strncmp(&pBuf_p[0], "/iomap.js HTTP/1.1\r\n", 20) == 0))
+    {
+        ret = send(clientFd_p, response_200_content_js, strlen(response_200_content_js), 0);
+
+        if (ret > 0)
+        {
+            ret = send(clientFd_p, iomap_js, strlen(iomap_js), 0);
+        }
+    }
     else if ((strncmp(&pBuf_p[0], "/network.js HTTP/1.1\r\n", 19) == 0))
     {
         ret = send(clientFd_p, response_200_content_js, strlen(response_200_content_js), 0);
 
         if (ret > 0)
         {
-            ret = send(clientFd_p, wsio_js, strlen(wsio_js), 0);
+            ret = send(clientFd_p, main_js, strlen(main_js), 0);
         }
     }
     else if ((strncmp(&pBuf_p[0], "/favicon.ico HTTP/1.1\r\n", 23) == 0))
@@ -348,6 +402,11 @@ static int WEB_SERVER_processGetAndRespond(int clientFd_p, const char *const pBu
         {
             ret = send(clientFd_p, gsp_favicon_ico, gsp_favicon_ico_len, 0);
         }
+    }
+    else if (strncmp(pBuf_p, "/iomap.svg HTTP/1.1", strlen("/iomap.svg HTTP/1.1")) == 0)
+    {
+        int svg_len = strlen(svg_io_template);
+        ret = send_IOSVG(clientFd_p, svg_io_template, svg_len);
     }
     else if ((strncmp(&pBuf_p[0], "/logo.png HTTP/1.1\r\n", 16) == 0))
     {
@@ -472,11 +531,36 @@ static int WEB_SERVER_processGetAndRespond(int clientFd_p, const char *const pBu
     }
     else if ((strncmp(&pBuf_p[0], "/io-data", 8) == 0))
     {
+        memset(jsonBuf, 0, sizeof(jsonBuf));
         int len = generate_io_table(jsonBuf, MAX_HTML_SIZE, (IOCoupler_Device *)&gSharedMem.IOCoupler_Devices);
 
         if (len > 0)
         {
             ret = send(clientFd_p, jsonBuf, len, 0);
+        }
+    }
+    else if ((strncmp(&pBuf_p[0], "/io-json", 8) == 0))
+    {
+        char header[256];
+        // DebugP_log("Handle /io-data-json\r\n");
+        memset(jsonBuf, 0, sizeof(jsonBuf));
+        int len = generate_io_json(jsonBuf, MAX_HTML_SIZE, (IOCoupler_Device *)&gSharedMem.IOCoupler_Devices);
+        // DebugP_log("len %d \r\n", len);
+        if (len > 0)
+        {
+            int hlen = snprintf(
+                header,
+                sizeof(header),
+                "HTTP/1.1 200 OK\r\n"
+                "Content-Type: application/json\r\n"
+                "Content-Length: %d\r\n"
+                "Connection: close\r\n"
+                "\r\n",
+                len);
+
+            ret = send(clientFd_p, header, hlen, 0);
+
+            ret |= send(clientFd_p, jsonBuf, len, 0);
         }
     }
     else
@@ -549,6 +633,7 @@ static void WEB_SERVER_task(void* pArgs_p)
                 {
                     // We received some bytes and it is a get request,
                     // call processing function.
+                    // DebugP_log("aBuf = %s\r\n", aBuf);
                     ret = WEB_SERVER_processGetAndRespond(clientFd, &aBuf[4]);
                     if (ret <= 0)
                     {

@@ -66,6 +66,9 @@ FLASH (16MB)
         0x60500000 - 0x60600000 (1 MB)
     ----------------------------------------------------------
     Core1
-        FLASH : ORIGIN = 0x60600000, LENGTH = 0xA00000
-        (Range 0x60600000 - 0x60FFFFFF; Size 10 MB)
+        FLASH : ORIGIN = 0x60600000, LENGTH = 0x800000
+        (Range 0x60600000 - 0x60DFFFFF; Size 8 MB)
+        FLASH_WEB : ORIGIN = 0x60E00000, LENGTH = 0x200000
+        (Range 0x60E00000 - 0x60FFFFFF; Size 2 MB)
+            - web_assets group
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
