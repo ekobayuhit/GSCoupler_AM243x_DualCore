@@ -123,25 +123,41 @@ extern "C" {
     "let modulesCreated=false;"
     "let moduleMap={};"
     
-    "const LED_BASE_Y = 100;"   // Shifted down to land on the black DI8 display grid
-    "const LED_STEP_Y = 11.8;"  // Finely adjusted vertical stepping for the LED grid
-    "const LED_LEFT_X = 29;"    // Centered with the left column of square indicators
-    "const LED_RIGHT_X = 41;"   // Centered with the right column of square indicators
-
-    "const PIN_BASE_Y = 206;"   // Y-coordinate of the first terminal pin row
-    "const PIN_STEP_Y = 37;"    // Vertical spacing between terminal pin rows
+    "const LED_LEFT_X = 18;"    // Centered with the left column of square indicators
+    "const LED_RIGHT_X = 30;"   // Centered with the right column of square indicators
+    "const LED_Y_ROWS = ["
+    "   75,"    // Row 0 (CH 0, 1)
+    "   84,"    // Row 1 (CH 2, 3)
+    "   93,"   // Row 2 (CH 4, 5)
+    "   102,"    // Row 3 (CH 6, 7)
+    "   112,"   // Row 4 (CH 8, 9)
+    "   121,"   // Row 5 (CH 10, 11)
+    "   129,"   // Row 6 (CH 12, 13)
+    "   139"    // Row 7 (CH 14, 15)
+    "];"
+    
     "const PIN_LEFT_X = 21;"    // X-coordinate for left terminal column
     "const PIN_RIGHT_X = 44;"   // X-coordinate for right terminal column
+    "const PIN_Y_ROWS = ["
+    "   207,"  // Row 0 (CH 0, 1)
+    "   242,"  // Row 1 (CH 2, 3)
+    "   277,"  // Row 2 (CH 4, 5)
+    "   309,"  // Row 3 (CH 6, 7)
+    "   344,"  // Row 4 (CH 8, 9)
+    "   378,"  // Row 5 (CH 10, 11)
+    "   408,"  // Row 6 (CH 12, 13)
+    "   443"   // Row 7 (CH 14, 15)
+    "];"
 
     "const PRODUCTS={"
-    "1:{name:'DO16',channels:16,digital:true},"
-    "2:{name:'DI16',channels:16,digital:true},"
-    "3:{name:'AIC',channels:8,digital:false},"
-    "4:{name:'AIV',channels:8,digital:false},"
-    "5:{name:'AOC',channels:8,digital:false},"
-    "6:{name:'AOV',channels:8,digital:false},"
-    "7:{name:'RTDY',channels:6,digital:false},"
-    "8:{name:'RTDB',channels:6,digital:false}"
+    "   1:{name:'DO',channels:16,digital:true},"
+    "   2:{name:'DI',channels:16,digital:true},"
+    "   3:{name:'AIC',channels:8,digital:false},"
+    "   4:{name:'AIV',channels:8,digital:false},"
+    "   5:{name:'AOC',channels:8,digital:false},"
+    "   6:{name:'AOV',channels:8,digital:false},"
+    "   7:{name:'RTDY',channels:6,digital:false},"
+    "   8:{name:'RTDB',channels:6,digital:false}"
     "};"
 
     "function getBit(v,b){return (v>>b)&1;}"
@@ -150,8 +166,8 @@ extern "C" {
     "   const isRight = (ch % 2) !== 0;"
     "   const rowIndex = Math.floor(ch / 2);"// Drops down 1 row every 2 channels
     "   return {"
-    "       cx: isRight ? LED_RIGHT_X : LED_LEFT_X,"
-    "       cy: LED_BASE_Y + (rowIndex * LED_STEP_Y)"
+    "       x: isRight ? LED_RIGHT_X : LED_LEFT_X,"
+    "       y: LED_Y_ROWS[rowIndex]"
     "   };"
     "}"
 
@@ -160,7 +176,7 @@ extern "C" {
     "   const rowIndex = Math.floor(ch / 2);"// Drops down 1 row every 2 channels
     "   return {"
     "       cx: isRight ? PIN_RIGHT_X : PIN_LEFT_X,"
-    "       cy: PIN_BASE_Y + (rowIndex * PIN_STEP_Y)"
+    "       cy: PIN_Y_ROWS[rowIndex]"
     "   };"
     "}"
     
