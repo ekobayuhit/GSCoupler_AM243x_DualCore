@@ -83,7 +83,7 @@ static char jsonBuf[MAX_HTML_SIZE];
  */
 static TaskP_Object WEB_SERVER_taskObj_g = { 0 };
 
-static int send_IOSVG(int fd, const char *svg_data, size_t svg_len)
+static int send_SVG(int fd, const char *svg_data, size_t svg_len)
 {
     char header[256];
 
@@ -100,7 +100,7 @@ static int send_IOSVG(int fd, const char *svg_data, size_t svg_len)
 
     if(ret < 0)
     {
-        DebugP_log("send_IOSVG Header send failed %d\r\n", ret);
+        DebugP_log("send_SVG Header send failed %d\r\n", ret);
         return -1;
     }
 
@@ -112,7 +112,7 @@ static int send_IOSVG(int fd, const char *svg_data, size_t svg_len)
                         (const char *)svg_data + offset,
                         svg_len - offset > 1024 ? 1024 : (svg_len - offset),
                         0);
-        DebugP_log("Sent SVG len=%u\r\n", (unsigned)sent);
+        // DebugP_log("Sent SVG len=%u\r\n", (unsigned)sent);
         if (sent < 0){
             DebugP_log("SVG send failed %d\r\n", ret);
             return -1;
@@ -406,7 +406,12 @@ static int WEB_SERVER_processGetAndRespond(int clientFd_p, const char *const pBu
     else if (strncmp(pBuf_p, "/iomap.svg HTTP/1.1", strlen("/iomap.svg HTTP/1.1")) == 0)
     {
         int svg_len = strlen(svg_io_template);
-        ret = send_IOSVG(clientFd_p, svg_io_template, svg_len);
+        ret = send_SVG(clientFd_p, svg_io_template, svg_len);
+    }
+    else if (strncmp(pBuf_p, "/plcmap.svg HTTP/1.1", strlen("/plcmap.svg HTTP/1.1")) == 0)
+    {
+        int svg_len = strlen(svg_plc_template);
+        ret = send_SVG(clientFd_p, svg_plc_template, svg_len);
     }
     else if ((strncmp(&pBuf_p[0], "/logo.png HTTP/1.1\r\n", 16) == 0))
     {

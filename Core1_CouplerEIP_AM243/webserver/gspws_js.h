@@ -119,7 +119,8 @@ extern "C" {
     "}";
 
     static const char iomap_js[] =
-    "let svgTemplateDoc=null;"
+    "let svgTemplateIO=null;"
+    "let svgTemplatePLC=null;"
     "let modulesCreated=false;"
     "let moduleMap={};"
     
@@ -225,13 +226,19 @@ extern "C" {
     "}"
 
     "async function loadSvgTemplate(){"
-    "  try{"
-    "    const r=await fetch('/iomap.svg');"
-    "    if(!r.ok) throw new Error('SVG load failed');"
-    "    const txt=await r.text();"
-    "    svgTemplateDoc=new DOMParser().parseFromString(txt,'image/svg+xml');"
-    "    poll();"
-    "  }catch(e){console.error(e);}"
+    "   try{"
+    "       const r=await fetch('/iomap.svg');"
+    "       if(!r.ok) throw new Error('SVG load failed');"
+    "       const txt=await r.text();"
+    "       svgTemplateIO=new DOMParser().parseFromString(txt,'image/svg+xml');"
+    "   }catch(e){console.error(e);}"
+    "   try{"
+    "       const r=await fetch('/plcmap.svg');"
+    "       if(!r.ok) throw new Error('SVG load failed');"
+    "       const txt=await r.text();"
+    "       svgTemplatePLC=new DOMParser().parseFromString(txt,'image/svg+xml');"
+    "   }catch(e){console.error(e);}"
+    "   poll();"
     "}"
 
     // Adjust your update loop to toggle classes on both target nodes
@@ -261,6 +268,18 @@ extern "C" {
     "   }"
     "}"
 
+    "function createPlcModule(){"
+    "   const div=document.createElement('div');"
+    "   div.className='module module-plc';"
+        // Added an empty module-id div to preserve alignment symmetry
+    "   div.innerHTML='<div class=\"module-title\">IO Coupler</div><div class=\"module-id\">&nbsp;</div>';"
+    "   if(svgTemplatePLC){"
+    "       const svg=svgTemplatePLC.documentElement.cloneNode(true);"
+    "       div.appendChild(svg);"
+    "   }"
+    "   return div;"
+    "}"
+    
     "function createModule(io){"
     "  const p=PRODUCTS[io.productCode]||{name:'Unknown',channels:0,digital:false};"
 
@@ -275,8 +294,8 @@ extern "C" {
     "  let svg=null;"
     "  let pinMap=new Map();"
 
-    "  if(svgTemplateDoc){"
-    "    svg=svgTemplateDoc.documentElement.cloneNode(true);"
+    "  if(svgTemplateIO){"
+    "    svg=svgTemplateIO.documentElement.cloneNode(true);"
     "    pinMap=buildPinMap(svg);"
     "    div.appendChild(svg);"
     "  }"
@@ -297,6 +316,10 @@ extern "C" {
 
     "  rack.innerHTML='';"
     "  moduleMap={};"
+    
+    "  if(svgTemplatePLC){"
+    "      rack.appendChild(createPlcModule());"
+    "  }"
 
     "  data.forEach(io=>rack.appendChild(createModule(io)));"
 
