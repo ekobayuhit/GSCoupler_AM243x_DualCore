@@ -89,66 +89,21 @@ extern "C" {
         "setTimeout('getCpuLoad()', 1000);"
     "}";
 
-    static const char wsio_js[] =
-    "function get_IOdata()"
-    "{"
-    // "    var ioReq = new XMLHttpRequest();"
-
-    // "    ioReq.onreadystatechange = function()"
-    // "    {"
-    // "        if(ioReq.readyState == 4)"
-    // "        {"
-    // "            if(ioReq.status == 200)"
-    // "            {"
-    // "                if(ioReq.responseText != null)"
-    // "                {"
-    // "                    var container = document.getElementById('iotable_container');"
-    // "                    if(container)"
-    // "                    {"
-    // "                        container.innerHTML = ioReq.responseText;"
-    // "                    }"
-    // "                }"
-    // "            }"
-    // "        }"
-    // "    };"
-
-    // "    ioReq.open('GET', '/io-data?id=' + Math.random(), true);"
-    // "    ioReq.send(null);"
-
-    // "    setTimeout(get_IOdata, 500);"
-    "}";
-
     static const char iomap_js[] =
     "let svgTemplateIO=null;"
     "let svgTemplatePLC=null;"
     "let modulesCreated=false;"
     "let moduleMap={};"
+    "let tooltip=null;"
+    "let activeModuleId=null;" // Tracks which module is currently under the mouse
     
-    "const LED_LEFT_X = 18;"    // Centered with the left column of square indicators
-    "const LED_RIGHT_X = 30;"   // Centered with the right column of square indicators
-    "const LED_Y_ROWS = ["
-    "   75,"    // Row 0 (CH 0, 1)
-    "   84,"    // Row 1 (CH 2, 3)
-    "   93,"   // Row 2 (CH 4, 5)
-    "   102,"    // Row 3 (CH 6, 7)
-    "   112,"   // Row 4 (CH 8, 9)
-    "   121,"   // Row 5 (CH 10, 11)
-    "   129,"   // Row 6 (CH 12, 13)
-    "   139"    // Row 7 (CH 14, 15)
-    "];"
+    "const LED_LEFT_X = 18;"
+    "const LED_RIGHT_X = 30;"
+    "const LED_Y_ROWS = [75, 84, 93, 102, 112, 121, 129, 139];"
     
-    "const PIN_LEFT_X = 21;"    // X-coordinate for left terminal column
-    "const PIN_RIGHT_X = 44;"   // X-coordinate for right terminal column
-    "const PIN_Y_ROWS = ["
-    "   207,"  // Row 0 (CH 0, 1)
-    "   242,"  // Row 1 (CH 2, 3)
-    "   277,"  // Row 2 (CH 4, 5)
-    "   309,"  // Row 3 (CH 6, 7)
-    "   344,"  // Row 4 (CH 8, 9)
-    "   378,"  // Row 5 (CH 10, 11)
-    "   408,"  // Row 6 (CH 12, 13)
-    "   443"   // Row 7 (CH 14, 15)
-    "];"
+    "const PIN_LEFT_X = 21;"
+    "const PIN_RIGHT_X = 44;"
+    "const PIN_Y_ROWS = [207, 242, 277, 309, 344, 378, 408, 443];"
 
     "const PRODUCTS={"
     "   1:{name:'DO',channels:16,digital:true},"
@@ -165,47 +120,35 @@ extern "C" {
 
     "function getLedPosition(ch) {"
     "   const isRight = (ch % 2) !== 0;"
-    "   const rowIndex = Math.floor(ch / 2);"// Drops down 1 row every 2 channels
-    "   return {"
-    "       x: isRight ? LED_RIGHT_X : LED_LEFT_X,"
-    "       y: LED_Y_ROWS[rowIndex]"
-    "   };"
+    "   const rowIndex = Math.floor(ch / 2);"
+    "   return { x: isRight ? LED_RIGHT_X : LED_LEFT_X, y: LED_Y_ROWS[rowIndex] };"
     "}"
 
     "function getPinPosition(ch) {"
     "   const isRight = (ch % 2) !== 0;"
-    "   const rowIndex = Math.floor(ch / 2);"// Drops down 1 row every 2 channels
-    "   return {"
-    "       cx: isRight ? PIN_RIGHT_X : PIN_LEFT_X,"
-    "       cy: PIN_Y_ROWS[rowIndex]"
-    "   };"
+    "   const rowIndex = Math.floor(ch / 2);"
+    "   return { cx: isRight ? PIN_RIGHT_X : PIN_LEFT_X, cy: PIN_Y_ROWS[rowIndex] };"
     "}"
     
-    // Instead of nesting elements, we populate or inject explicit positions
     "function normalizePin(svg, ch) {"
-    // Look for existing overlays, create if absent
     "   let led = svg.querySelector(`.led-ch-${ch}`);"
     "   let io = svg.querySelector(`.io-ch-${ch}`);"
     "   const ledPos = getLedPosition(ch);"
     "   const pinPos = getPinPosition(ch);"
-    // Render LED as a Rectangle (using SVG <rect>)
     "   if (!led) {"
     "       led = document.createElementNS(\"http://www.w3.org/2000/svg\", \"rect\");"
     "       led.setAttribute(\"class\", `status-indicator pin-led led-ch-${ch}`);"
-    // Center the rectangle by subtracting half its width(5)/height(4) from coordinates
     "       led.setAttribute(\"x\", ledPos.x - 2);" 
     "       led.setAttribute(\"y\", ledPos.y - 2);"
     "       led.setAttribute(\"width\", \"4\");"
     "       led.setAttribute(\"height\", \"4\");"
     "       svg.appendChild(led);"
     "   }"
-    // Render Terminal Pin Connector as a larger Circle
     "   if (!io) {"
     "       io = document.createElementNS(\"http://www.w3.org/2000/svg\", \"circle\");"
     "       io.setAttribute(\"class\", `status-indicator pin-io io-ch-${ch}`);"
     "       io.setAttribute(\"cx\", pinPos.cx);"
     "       io.setAttribute(\"cy\", pinPos.cy);"
-    // Radius is set explicitly here or scaled via CSS
     "       io.setAttribute(\"r\", \"9\");"
     "       svg.appendChild(io);"
     "   }"
@@ -213,10 +156,8 @@ extern "C" {
 
     "function buildPinMap(svg) {"
     "   const map = new Map();"
-        // Assume 16 channels max for DI16 / DO16
     "   for (let ch = 0; ch < 16; ch++) {"
     "       normalizePin(svg, ch);"
-            // Group references by channel ID for easy updates
     "       map.set(ch, {"
     "           led: svg.querySelector(`.led-ch-${ch}`),"
     "           io: svg.querySelector(`.io-ch-${ch}`)"
@@ -241,59 +182,166 @@ extern "C" {
     "   poll();"
     "}"
 
-    // Adjust your update loop to toggle classes on both target nodes
+    "async function triggerHardwareScan() {"
+    "   const btn = document.getElementById('scanButton');"
+    "   const btnText = document.getElementById('scanButtonText');"
+    "   const progContainer = document.getElementById('progressContainer');"
+    "   const progBar = document.getElementById('progressBar');"
+
+    "   if (!btn || !btnText) return;"
+
+    "   btn.disabled = true;"
+    "   btn.style.opacity = '0.6';"
+    "   btnText.textContent = 'Scanning...';"
+
+    "   if (progContainer && progBar) {"
+    "       progContainer.style.display = 'block';"
+    "       progBar.style.width = '20%';"
+    "   }"
+
+    "   try {"
+    "       setTimeout(() => { if(progBar) progBar.style.width = '60%'; }, 200);"
+
+    "       const r = await fetch('/api/scan', { method: 'POST' });"
+    "       if (!r.ok) throw new Error('Hardware backplane failed discovery response');"
+            
+    "       if(progBar) progBar.style.width = '100%';"
+    "       await new Promise(resolve => setTimeout(resolve, 150));"
+
+    "       modulesCreated = false;"
+    "       await loadData();"
+
+    "   } catch(e) {"
+    "       console.error('Scan Execution Error:', e);"
+    "       alert('Hardware scan failed. Check connections.');"
+    "   } finally {"
+    "       btn.disabled = false;"
+    "       btn.style.opacity = '1.0';"
+    "       btnText.textContent = 'Scan';"
+            
+    "       if (progContainer) progContainer.style.display = 'none';"
+    "       if (progBar) progBar.style.width = '0%';"
+    "   }"
+    "}"
+
+    "function updateSummaryTable(data) {"
+    "   const counts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0 };"
+    "   data.forEach(io => {"
+    "       if (counts[io.productCode] !== undefined) {"
+    "           counts[io.productCode]++;"
+    "       }"
+    "   });"
+
+    "   document.getElementById('DOCount').textContent   = counts[1] || '0';" 
+    "   document.getElementById('DICount').textContent   = counts[2] || '0';"
+    "   document.getElementById('AICCount').textContent  = counts[3] || '0';"
+    "   document.getElementById('AIVCount').textContent  = counts[4] || '0';"
+    "   document.getElementById('AOCCount').textContent  = counts[5] || '0';"
+    "   document.getElementById('AOVCount').textContent  = counts[6] || '0';"
+    "   document.getElementById('RTDYCount').textContent = counts[7] || '0';"
+    "   document.getElementById('RTDBCount').textContent = counts[8] || '0';"
+    "}"
+
+    "function renderTooltipContent(io) {"
+    "   if (!tooltip) return;"
+    "   const p = PRODUCTS[io.productCode] || {name:'Unknown', channels:16, digital:false};"
+    "   const val = Number(io.value) || 0;"
+    
+    "   let chTable = '<table><tr><th>CH</th><th>Stat</th><th>CH</th><th>Stat</th></tr>';"
+    "   for(let i=0; i < p.channels/2; i++) {"
+    "       const chA = i * 2;"
+    "       const chB = i * 2 + 1;"
+    "       const b1 = getBit(val, chA);"
+    "       const b2 = getBit(val, chB);"
+    "       chTable += `<tr>` +"
+    "           `<td>${chA+1}</td><td class=\"${b1?'ch-on':'ch-off'}\">${b1?'ON':'OFF'}</td>` +"
+    "           `<td>${chB+1}</td><td class=\"${b2?'ch-on':'ch-off'}\">${b2?'ON':'OFF'}</td>` +"
+    "       `</tr>`;"
+    "   }"
+    "   chTable += '</table>';"
+
+    "   tooltip.innerHTML = `"
+    "       <b>${p.name} Module (ID: ${io.id})</b><br/>"
+    "       <hr style='border:0; border-top:1px solid #555'/>"
+    "       Serial Number: ${io.serialNumber || 'N/A'}<br/>"
+    "       HW: ${io.hwVer || 'N/A'} | FW: ${io.fwVer || 'N/A'}<br/>"
+    "       Last Error Type: <span style='color:${io.lastErrorType !== 0 ? \"#ff4444\":\"#00ff66\"}'>${io.lastErrorType}</span><br/>"
+    "       Last Error Code: <span style='color:${io.lastErrorCode !== 0 ? \"#ff4444\":\"#00ff66\"}'>${io.lastErrorCode}</span><br/>"
+    "       ${chTable}"
+    "   `;"
+    "}"
+
+    "function handleMouseMove(e, id) {"
+    "   if(!tooltip) {"
+    "       tooltip = document.createElement('div');"
+    "       tooltip.id = 'io-tooltip';"
+    "       document.body.appendChild(tooltip);"
+    "   }"
+    "   activeModuleId = id;"
+    "   const m = moduleMap[id];"
+    "   if (m && m.lastData) {"
+    "       renderTooltipContent(m.lastData);"
+    "   }"
+    "   tooltip.style.display = 'block';"
+    "   tooltip.style.left = (e.clientX + 15) + 'px';"
+    "   tooltip.style.top = (e.clientY + 15) + 'px';"
+    "}"
+
+    "function handleMouseLeave() {"
+    "   activeModuleId = null;"
+    "   if(tooltip) tooltip.style.display = 'none';"
+    "}"
+
     "function updateModule(io) {"
     "   const m = moduleMap[io.id];"
     "   if (!m) return;"
+    "   m.lastData = io;"
 
     "   const p = PRODUCTS[io.productCode];"
-
     "   m.wrapper.classList.toggle('state-ok', !!io.state);"
     "   m.wrapper.classList.toggle('state-error', !io.state);"
 
     "   if (!p || !p.digital) return;"
-
     "   const value = Number(io.value) || 0;"
 
     "   for (let ch = 0; ch < p.channels; ch++) {"
     "       const bit = getBit(value, ch);"
     "       const targets = m.pins.get(ch);"
     "       if (!targets) continue;"
-
-            // Apply state classes directly to the elements
     "       targets.led.classList.toggle('pin-on', bit);"
     "       targets.led.classList.toggle('pin-off', !bit);"
     "       targets.io.classList.toggle('pin-on', bit);"
     "       targets.io.classList.toggle('pin-off', !bit);"
     "   }"
+
+    "   if (activeModuleId === io.id) {"
+    "       renderTooltipContent(io);"
+    "   }"
     "}"
 
+    // DOM NODE GENERATION
     "function createPlcModule(){"
     "   const div=document.createElement('div');"
     "   div.className='module module-plc';"
-        // Added an empty module-id div to preserve alignment symmetry
-    "   div.innerHTML='<div class=\"module-title\">IO Coupler</div><div class=\"module-id\">&nbsp;</div>';"
+    "   div.innerHTML='<div class=\"module-title\">PLC CPU</div><div class=\"module-id\">&nbsp;</div>';"
     "   if(svgTemplatePLC){"
     "       const svg=svgTemplatePLC.documentElement.cloneNode(true);"
     "       div.appendChild(svg);"
     "   }"
     "   return div;"
     "}"
-    
+
     "function createModule(io){"
     "  const p=PRODUCTS[io.productCode]||{name:'Unknown',channels:0,digital:false};"
-
     "  const div=document.createElement('div');"
     "  div.className='module';"
     "  div.dataset.id=io.id;"
-
     "  div.innerHTML="
     "    '<div class=\"module-title\">'+p.name+'</div>' +"
     "    '<div class=\"module-id\">ID '+io.id+'</div>';"
 
     "  let svg=null;"
     "  let pinMap=new Map();"
-
     "  if(svgTemplateIO){"
     "    svg=svgTemplateIO.documentElement.cloneNode(true);"
     "    pinMap=buildPinMap(svg);"
@@ -303,8 +351,12 @@ extern "C" {
     "  moduleMap[io.id]={"
     "    wrapper:div,"
     "    svg:svg,"
-    "    pins:pinMap"
+    "    pins:pinMap,"
+    "    lastData:io"
     "  };"
+
+    "  div.addEventListener('mousemove', (e) => handleMouseMove(e, io.id));"
+    "  div.addEventListener('mouseleave', handleMouseLeave);"
 
     "  updateModule(io);"
     "  return div;"
@@ -313,17 +365,16 @@ extern "C" {
     "function createRack(data){"
     "  const rack=document.getElementById('io-rack');"
     "  if(!rack) return;"
-
     "  rack.innerHTML='';"
     "  moduleMap={};"
     
     "  if(svgTemplatePLC){"
     "      rack.appendChild(createPlcModule());"
     "  }"
-
+    
     "  data.forEach(io=>rack.appendChild(createModule(io)));"
-
     "  modulesCreated=true;"
+    "  updateSummaryTable(data);"
     "}"
 
     "function updateRack(data){"
@@ -335,10 +386,8 @@ extern "C" {
     "    const r=await fetch('/io-json?id='+Date.now());"
     "    if(!r.ok) throw new Error('IO request failed');"
     "    const data=await r.json();"
-
     "    if(!modulesCreated) createRack(data);"
     "    else updateRack(data);"
-
     "  }catch(e){console.error(e);}"
     "}"
 
@@ -349,6 +398,10 @@ extern "C" {
 
     "async function init(){"
     "  await loadSvgTemplate();"
+    "   const scanBtn = document.getElementById('scanButton');"
+    "   if (scanBtn) {"
+    "       scanBtn.addEventListener('click', triggerHardwareScan);"
+    "   }"
     "}"
 
     "window.addEventListener('load',init);";

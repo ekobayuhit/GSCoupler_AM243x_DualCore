@@ -280,6 +280,82 @@ static const char style_iomap_css[] =
     /* ===== MODULE DIAGNOSTIC STATES ===== */
     ".state-ok { border: 1px solid #4CAF50; }"
     ".state-error { border: 1px solid red; }"
+
+    /* ===== ELEGANT HOVER POPUP (TOOLTIP) ===== */
+    "#io-tooltip {"
+    "   position: fixed;"
+    "   display: none;"
+    "   z-index: 1000;"
+    "   background: #24292e;"         /* Rich charcoal dark-mode theme */
+    "   color: #e1e4e8;"              /* Soft white text */
+    "   padding: 12px 14px;"
+    "   border-radius: 6px;"
+    "   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;"
+    "   font-size: 12px;"
+    "   line-height: 1.5;"
+    "   box-shadow: 0 8px 24px rgba(0,0,0,0.5);"
+    "   border: 1px solid #444d56;"   /* Clean structural outline border */
+    "   pointer-events: none;"
+    "   min-width: 180px;"
+    "}"
+    
+    "#io-tooltip b {"
+    "   font-size: 13px;"
+    "   color: #ffffff;"
+    "}"
+    
+    /* Elegant Flat Minimalist Table Definition */
+    "#io-tooltip table {"
+    "   width: 100%;"
+    "   border-collapse: collapse;"
+    "   margin-top: 10px;"
+    "   background: #1f2327;"         /* Deep table background inset */
+    "   border-radius: 4px;"
+    "   overflow: hidden;"            /* Wraps corners cleanly */
+    "}"
+    
+    /* Clean, distinct table header bar */
+    "#io-tooltip th {"
+    "   background: #2f363d;"         /* Distinct block for titles */
+    "   color: #959da5;"              /* Muted text for structural labels */
+    "   font-size: 11px;"
+    "   font-weight: 600;"
+    "   text-transform: uppercase;"
+    "   letter-spacing: 0.5px;"
+    "   padding: 5px 8px;"
+    "   border-bottom: 2px solid #444d56;"
+    "}"
+    
+    /* Uniform grid padding and subtle dividers */
+    "#io-tooltip td {"
+    "   padding: 6px 8px;"
+    "   border-bottom: 1px solid #2b3137;"
+    "   font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;"
+    "   font-size: 11px;"
+    "}"
+    
+    /* Muted Alternating Row Styling */
+    "#io-tooltip tr:nth-child(even) {"
+    "   background: #24292e;"
+    "}"
+    
+    /* Status Column High Contrast Overrides */
+    "#io-tooltip .ch-on {"
+    "   color: #00ff66;"              /* Vibrant Neon Green text */
+    "   font-weight: bold;"
+    "   text-shadow: 0 0 4px rgba(0,255,102,0.3);"
+    "}"
+    
+    "#io-tooltip .ch-off {"
+    "   color: #6a737d;"              /* Flat muted grey for standby elements */
+    "   font-weight: normal;"
+    "}"
+    
+    /* Highlight module on hover wrapper hook */
+    ".module:hover {"
+    "   background: #f0faff;"
+    "   cursor: help;"
+    "}"
     ;
 
 static const char header_html[] =
@@ -434,7 +510,7 @@ static const char page_iomap[] =
 
 "           <div>"
 "               <div id=\"progressContainer\" style=\"display:none; width:150px; height:6px; background:#eee; border-radius:4px; overflow:hidden; margin-bottom:8px;\">"
-"                   <div id=\"progressBar\" style=\"width:0%; height:100%; background:var(--primary-orange);\"></div>"
+"                   <div id=\"progressBar\" style=\"width:0%; height:100%; background:var(--primary-orange); transition: width 0.1s ease;\"></div>"
 "               </div>"
 
 "               <button id=\"scanButton\" style=\"width:150px; height:36px; border:none; border-radius:6px; "
@@ -447,28 +523,38 @@ static const char page_iomap[] =
 "                       <path d=\"M3,17v3a1,1,0,0,0,1,1H7\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" fill=\"none\"/>" 
 "                       <path d=\"M21,17v3a1,1,0,0,1-1,1H17\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" fill=\"none\"/>" 
 "                   </svg>"
-"                   Scan"
+"                   <span id=\"scanButtonText\">Scan</span>"
 "               </button>"
 "           </div>"
 
 "           <div style=\"flex:1;\">"
-"               <table style=\"width:100%; border-collapse:collapse; font-size:12px;\">"
+"               <table style=\"width:100%; border-collapse:collapse; font-size:12px; border:1px solid #ddd;\">"
 "                   <thead>"
-"                       <tr style=\"background:#f5f5f5;\">"
-"                           <th>DI</th><th>DO</th><th>AIC</th><th>AIV</th>"
-"                           <th>AOC</th><th>AOV</th><th>RTDY</th><th>RTDB</th>"
+"                       <tr style=\"background:#2f363d; color:#ffffff;\">"
+"                           <th style=\"padding:6px; border:1px solid #ddd;\">DI</th>"
+"                           <th style=\"padding:6px; border:1px solid #ddd;\">DO</th>"
+"                           <th style=\"padding:6px; border:1px solid #ddd;\">AIC</th>"
+"                           <th style=\"padding:6px; border:1px solid #ddd;\">AIV</th>"
+"                           <th style=\"padding:6px; border:1px solid #ddd;\">AOC</th>"
+"                           <th style=\"padding:6px; border:1px solid #ddd;\">AOV</th>"
+"                           <th style=\"padding:6px; border:1px solid #ddd;\">RTDY</th>"
+"                           <th style=\"padding:6px; border:1px solid #ddd;\">RTDB</th>"
 "                       </tr>"
 "                   </thead>"
 "                   <tbody>"
-"                       <tr style=\"text-align:center;\">"
-"                           <td id=\"DICount\">-</td><td id=\"DOCount\">-</td>"
-"                           <td id=\"AICCount\">-</td><td id=\"AIVCount\">-</td>"
-"                           <td id=\"AOCCount\">-</td><td id=\"AOVCount\">-</td>"
-"                           <td id=\"RTDYCount\">-</td><td id=\"RTDBCount\">-</td>"
+"                       <tr style=\"text-align:center; font-weight:bold; background:#ffffff;\">"
+"                           <td id=\"DICount\" style=\"padding:8px; border:1px solid #ddd;\">-</td>"
+"                           <td id=\"DOCount\" style=\"padding:8px; border:1px solid #ddd;\">-</td>"
+"                           <td id=\"AICCount\" style=\"padding:8px; border:1px solid #ddd;\">-</td>"
+"                           <td id=\"AIVCount\" style=\"padding:8px; border:1px solid #ddd;\">-</td>"
+"                           <td id=\"AOCCount\" style=\"padding:8px; border:1px solid #ddd;\">-</td>"
+"                           <td id=\"AOVCount\" style=\"padding:8px; border:1px solid #ddd;\">-</td>"
+"                           <td id=\"RTDYCount\" style=\"padding:8px; border:1px solid #ddd;\">-</td>"
+"                           <td id=\"RTDBCount\" style=\"padding:8px; border:1px solid #ddd;\">-</td>"
 "                       </tr>"
-"                   </tbody>"
-"               </table>"
-"           </div>"
+"               </tbody>"
+"           </table>"
+"       </div>"
 
 "       </div>"
 "   </div>"
@@ -492,26 +578,6 @@ static const char page_iomap[] =
 "   </div>"
 
 "</div>"
-
-// "<div style=\"margin-top:20px; background:#fff; border-radius:10px; padding:15px; box-shadow:0 2px 6px rgba(0,0,0,0.08);\">"
-// "   <div style=\"font-weight:600; margin-bottom:10px;\">IO Data</div>"
-
-// "   <div id=\"iotable_container\">" 
-// "       <table id=\"iotable\" width=\"50%\">" 
-// "           <tbody>" 
-// "               <tr>" 
-// "                   <th>ID</th>" 
-// "                   <th>IO Type</th>" 
-// "                   <th>Data Value</th>" 
-// "                   <th>State</th>" 
-// "                   <th>Last Error Type</th>" 
-// "                   <th>Last Error Code</th>" 
-// "               </tr>" 
-// "               <tr><td colspan=\"6\">Loading...</td></tr>" 
-// "           </tbody>" 
-// "       </table>"
-// "   </div>"
-// "</div>"
 "<br>"
 "<div class=\"section-title\" style=\"display:flex; align-items:center; gap:10px; font-size:18px; font-weight:600; margin-bottom:15px;\">"
 "   IO Module Overview"

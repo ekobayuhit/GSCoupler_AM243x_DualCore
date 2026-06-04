@@ -120,10 +120,18 @@ typedef struct {
     uint8_t reserved[128];
 } IOCoupler_Device;
 
+typedef enum {
+    WS_NONE,
+    WS_SCAN_IO,
+    WS_CFG_NET_IP,
+    WS_CFG_DEVICE_NAME
+} ws_cmd_t;
+
 typedef struct{
     uint8_t active_protocol;
     uint8_t master_state;
-    uint8_t ws_cmd;
+    ws_cmd_t ws_cmd;
+    uint8_t ws_scan_status;
     uint8_t reserved[256];
 }ipc_system_t;
 

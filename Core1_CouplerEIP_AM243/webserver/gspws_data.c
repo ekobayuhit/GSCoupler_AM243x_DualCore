@@ -165,21 +165,16 @@ Output format:
   {
     "id":1,
     "productCode":2,
+    "serialNumber":0000000,
     "state":1,
     "lastErrorType":0,
     "lastErrorCode":0,
     "value":5,
-    "valueStr":"0000000000000101"
+    "valueStr":"0000000000000101",
+    "hwVer":"1.0.0",
+    "fwVer":"2.1.4"
   },
-  {
-    "id":2,
-    "productCode":3,
-    "state":1,
-    "lastErrorType":0,
-    "lastErrorCode":0,
-    "value":0,
-    "valueStr":"100,200,300,400,500,600,700,800"
-  }
+  ...
 ]
  */
 int generate_io_json(char *json_out, int max_size, IOCoupler_Device *dev)
@@ -304,30 +299,37 @@ int generate_io_json(char *json_out, int max_size, IOCoupler_Device *dev)
         {
             if (s->offset_index + 24 <= sizeof(localIn))
             {
-
+                 // Handle RTD values if necessary
             }
         }
 
+        /* UPDATED: Injected "hwVer" and "fwVer" fields into the format string template */
         written = snprintf(
             json_out + offset,
             max_size - offset,
             "%s{"
             "\"id\":%d,"
             "\"productCode\":%d,"
+            "\"serialNumber\":%d,"
             "\"state\":%d,"
             "\"lastErrorType\":%d,"
             "\"lastErrorCode\":%d,"
             "\"value\":%u,"
-            "\"valueStr\":\"%s\""
+            "\"valueStr\":\"%s\","
+            "\"hwVer\":\"%s\","
+            "\"fwVer\":\"%s\""
             "}",
             (i > 0) ? "," : "",
             s->nodeId,
             s->productCode,
+            s->serialNumber,
             s->nodeState,
             s->last_error_type,
             s->last_error_code,
             value,
-            valueStr);
+            valueStr,
+            s->hw_version,
+            s->fw_version);
 
         if (written < 0 || written >= (max_size - offset))
             break;

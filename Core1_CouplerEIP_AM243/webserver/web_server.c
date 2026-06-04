@@ -366,15 +366,6 @@ static int WEB_SERVER_processGetAndRespond(int clientFd_p, const char *const pBu
             ret = send(clientFd_p, main_js, strlen(main_js), 0);
         }
     }
-    else if ((strncmp(&pBuf_p[0], "/wsio.js HTTP/1.1\r\n", 19) == 0))
-    {
-        ret = send(clientFd_p, response_200_content_js, strlen(response_200_content_js), 0);
-
-        if (ret > 0)
-        {
-            ret = send(clientFd_p, wsio_js, strlen(wsio_js), 0);
-        }
-    }
     else if ((strncmp(&pBuf_p[0], "/iomap.js HTTP/1.1\r\n", 20) == 0))
     {
         ret = send(clientFd_p, response_200_content_js, strlen(response_200_content_js), 0);
@@ -564,8 +555,78 @@ static int WEB_SERVER_processGetAndRespond(int clientFd_p, const char *const pBu
                 len);
 
             ret = send(clientFd_p, header, hlen, 0);
+            if (ret > 0) 
+            {
+                ret = send(clientFd_p, jsonBuf, len, 0);
+            }
+        }
+    }
+    else if ((strncmp(&pBuf_p[0], "/api/scan", 9) == 0))
+    {   
+        // Handle API Hardware Scan Requests
+        char header[256];
+        char resp[64];
+        int len;
+        
+        app_ipc_sharemem_lock();
+        gSharedMem.ipc_sys.ws_cmd = WS_SCAN_IO;
+        gSharedMem.ipc_sys.ws_scan_status = 1; // 1 = BUSY / IN PROGRESS
+        app_ipc_sharemem_unlock();
 
-            ret |= send(clientFd_p, jsonBuf, len, 0);
+        int timeout_ms = 10000; 
+        int polled_time = 0;
+        int scan_success = 0;
+
+        while (polled_time < timeout_ms)
+        {
+            vTaskDelay(5000); // Sleep for 20ms
+            polled_time += 20;
+
+            app_ipc_sharemem_lock();
+            if (gSharedMem.ipc_sys.ws_scan_status == 2) // 2 = SUCCESS
+            {
+                scan_success = 1;
+                app_ipc_sharemem_unlock();
+                break;
+            }
+            else if (gSharedMem.ipc_sys.ws_scan_status == 3) // 3 = ERROR
+            {
+                scan_success = 0;
+                app_ipc_sharemem_unlock();
+                break;
+            }
+            app_ipc_sharemem_unlock();
+        }
+
+        app_ipc_sharemem_lock();
+        gSharedMem.ipc_sys.ws_cmd = WS_NONE;
+        gSharedMem.ipc_sys.ws_scan_status = 0; // 0 = IDLE
+        app_ipc_sharemem_unlock();
+
+        if (scan_success)
+        {
+            snprintf(resp, sizeof(resp), "{\"status\":\"success\"}");
+        }
+        else
+        {
+            snprintf(resp, sizeof(resp), "{\"status\":\"error\",\"message\":\"Timeout or hardware error\"}");
+        }
+        len = strlen(resp);
+
+        int hlen = snprintf(
+            header,
+            sizeof(header),
+            "HTTP/1.1 200 OK\r\n"
+            "Content-Type: application/json\r\n"
+            "Content-Length: %d\r\n"
+            "Connection: close\r\n"
+            "\r\n",
+            len);
+
+        ret = send(clientFd_p, header, hlen, 0);
+        if (ret > 0) 
+        {
+            send(clientFd_p, resp, len, 0);
         }
     }
     else
