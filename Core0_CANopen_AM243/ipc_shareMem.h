@@ -76,6 +76,9 @@ typedef struct {
     uint16_t d_all;
 } IO_DigitalValues;
 
+/* * NOTE: Keep this structure local to Core 0 code execution.
+ * Do not transmit raw void pointers over shared IPC memory zones.
+ */
 typedef struct
 {
     void *d_ptr; //pointer to digital value
@@ -84,41 +87,71 @@ typedef struct
 } IO_RuntimeInfo;
 
 typedef struct {
-    uint8_t nodeId;
-    uint8_t productCode;
-    uint8_t input_index;    //index start from 1
-    uint8_t output_index;   //index start from 1
+    union {
+        struct {
+            uint8_t nodeId;
+            uint8_t productCode;
+            uint8_t input_index;    // index start from 1
+            uint8_t output_index;   // index start from 1
 
-    uint32_t nodeState;
-    uint32_t vendorId;
+            uint32_t nodeState;
+            uint32_t vendorId;
 
-    uint32_t revisionNumber;
-    uint32_t serialNumber;
+            uint32_t revisionNumber;
+            uint32_t serialNumber;
 
-    uint32_t last_error_type;
-    uint32_t last_error_code;
-    
-    uint32_t offset_index;
-    
-    char hw_version[GESPANT_HW_VER_SIZE];
-    char fw_version[GESPANT_FW_VER_SIZE];
-} IO_SlaveInfo;
+            uint32_t last_error_type;
+            uint32_t last_error_code;
+            
+            uint32_t offset_index;
+            
+            char hw_version[GESPANT_HW_VER_SIZE]; // 5 bytes
+            char fw_version[GESPANT_FW_VER_SIZE]; // 7 bytes
+        };
+
+        uint8_t automated_slave_block[128];
+    };
+} __attribute__((aligned(128))) IO_SlaveInfo;
 
 typedef struct {
-    uint8_t numberOfSlaves;
-    uint8_t numberOfInputSlaves;
-    uint8_t numberOfOutputSlaves;
-    uint8_t numberofDI;
-    uint8_t numberofDO;
-    uint8_t numberofAIC;
-    uint8_t numberofAIV;
-    uint8_t numberofAOC;
-    uint8_t numberofAOV;
-    uint8_t numberofRTDY;
-    uint8_t numberofRTDB;
-    IO_SlaveInfo slaveInfo[MAX_IO_DEVICES];
-    uint8_t reserved[128];
-} IOCoupler_Device;
+    union {
+        struct {
+            uint8_t numberOfSlaves;
+            uint8_t numberOfInputSlaves;
+            uint8_t numberOfOutputSlaves;
+            uint8_t numberofDI;
+            uint8_t numberofDO;
+            uint8_t numberofAIC;
+            uint8_t numberofAIV;
+            uint8_t numberofAOC;
+            uint8_t numberofAOV;
+            uint8_t numberofRTDY;
+            uint8_t numberofRTDB;
+            
+            // Explicit padding to keep the upcoming 128-byte aligned array clean
+            uint8_t explicit_alignment_pad[5]; 
+
+            /* * Array of 128-byte elements.
+             * 20 devices * 128 bytes = 2560 bytes.
+             */
+            IO_SlaveInfo slaveInfo[MAX_IO_DEVICES]; 
+        };
+
+        /* * Automated Padding Block.
+         * Base variables (11) + Pad (5) + Array (2560) = 2576 bytes.
+         * Nearest 128-byte boundary is 2688 bytes (128 * 21).
+         */
+        uint8_t automated_cache_block[2688];
+    };
+} __attribute__((aligned(128))) IOCoupler_Device;
+
+/** IPC Data Structure */
+ typedef enum {
+    ERR_TASK_NONE,
+    ERR_TASK_CAN_TX,
+    ERR_TASK_CAN_RX,
+    ERR_TASK_INDS_COMM,
+} task_err_type_t;
 
 typedef enum {
     WS_NONE,
@@ -127,22 +160,43 @@ typedef enum {
     WS_CFG_DEVICE_NAME
 } ws_cmd_t;
 
-typedef struct{
-    uint8_t active_protocol;
-    uint8_t master_state;
-    ws_cmd_t ws_cmd;
-    uint8_t ws_scan_status;
-    uint8_t reserved[256];
-}ipc_system_t;
+typedef struct {
+    uint32_t heartbeat;
+    uint32_t cpu_load;           // CPU Load percentage 
+    uint32_t cycle_count_max;    
+    uint32_t cycle_count_curr;   
+    uint32_t task_switches;      
+    task_err_type_t last_error_type;
+    uint32_t last_error_code;    
+} core_stats_t; // Size: 28 bytes
 
 typedef struct {
-    ipc_system_t ipc_sys;
-    uint8_t reserved_a[512];
-    uint8_t buff_in[1024];
-    uint8_t buff_out[1024];
-    IOCoupler_Device IOCoupler_Devices; 
-    uint8_t reserved_b[512];
-}ipc_data_t;
+    uint8_t active_protocol;
+    uint8_t master_state;
+    uint8_t ws_scan_status;
+    uint8_t explicit_pad0;       // Aligns enum execution scope
+    
+    ws_cmd_t ws_cmd;             // enum is 4 bytes
+    
+    core_stats_t core0_stats;
+    core_stats_t core1_stats;
+    
+    uint8_t reserved[64];        
+} __attribute__((aligned(128))) ipc_system_t;
+
+typedef struct {
+    union {
+        struct {
+            ipc_system_t     ipc_sys;           //  128 Bytes
+            uint8_t          buff_in[1024];     // 1024 Bytes
+            uint8_t          buff_out[1024];    // 1024 Bytes
+            IOCoupler_Device IOCoupler_Devices; // 2688 Bytes
+        };
+
+        // This reserves a fixed 8KB block in MSRAM
+        uint8_t automated_shared_ram_block[8192]; 
+    };
+} __attribute__((aligned(128))) ipc_data_t;
 
 void init_ipc_sharemem(void);
 void app_ipc_sharemem_lock(void);
