@@ -5,15 +5,30 @@
 extern "C" {
 #endif
 
-static const char response_200_content_html[] = "HTTP/1.1 200 OK\r\nContent-type: text/html\r\n\r\n";
+static const char response_200_content_html[] = 
+    "HTTP/1.1 200 OK\r\n"
+    "Content-type: text/html\r\n"
+    "Connection: close\r\n\r\n";
 
-static const char response_200_content_css[] = "HTTP/1.1 200 OK\r\nContent-type: text/css\r\n\r\n";
+static const char response_200_content_css[] = 
+    "HTTP/1.1 200 OK\r\n"
+    "Content-type: text/css\r\n"
+    "Connection: close\r\n\r\n";;
 
-static const char response_200_content_js[] = "HTTP/1.1 200 OK\r\nContent-type: text/javascript\r\n\r\n";
+static const char response_200_content_js[] = 
+    "HTTP/1.1 200 OK\r\n"
+    "Content-type: application/javascript\r\n"
+    "Connection: close\r\n\r\n";
 
-static const char response_200_content_image[] = "HTTP/1.1 200 OK\r\nContent-type: image/x-icon\r\n\r\n";
+static const char response_200_content_image[] = 
+    "HTTP/1.1 200 OK\r\n"
+    "Content-type: image/x-icon\r\n"
+    "Connection: close\r\n\r\n";
         
-static const char response_404[] = "HTTP/1.1 404 Not Found\r\nContent-type: text/html\r\n\r\n"
+static const char response_404[] = 
+    "HTTP/1.1 404 Not Found\r\n"
+    "Content-type: text/html\r\n"
+    "Connection: close\r\n\r\n"
     "<html>"
         "<head>"
             "<style>"
@@ -35,7 +50,10 @@ static const char response_404[] = "HTTP/1.1 404 Not Found\r\nContent-type: text
         "</body>"
     "</html>";
 
-static const char response_501[] = "HTTP/1.1 501 Not Implemented\r\nContent-type: text/html\r\n\r\n"
+static const char response_501[] = 
+    "HTTP/1.1 501 Not Implemented\r\n"
+    "Content-type: text/html\r\n"
+    "Connection: close\r\n\r\n"
     "<html>"
         "<head>"
             "<style>"

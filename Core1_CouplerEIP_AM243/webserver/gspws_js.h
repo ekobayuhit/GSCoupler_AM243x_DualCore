@@ -96,6 +96,7 @@ extern "C" {
     "let moduleMap={};"
     "let tooltip=null;"
     "let activeModuleId=null;" // Tracks which module is currently under the mouse
+    "let scanInProgress = false;"
     
     "const LED_LEFT_X = 18;"
     "const LED_RIGHT_X = 30;"
@@ -104,6 +105,13 @@ extern "C" {
     "const PIN_LEFT_X = 21;"
     "const PIN_RIGHT_X = 44;"
     "const PIN_Y_ROWS = [207, 242, 277, 309, 344, 378, 408, 443];"
+
+    "const nmtStates = {"
+    "   0: \"Boot-up\","
+    "   4: \"Stopped\","
+    "   5: \"Operational\","
+    "   127: \"Pre-operational\""
+    "};"
 
     "const PRODUCTS={"
     "   1:{name:'DO',channels:16,digital:true},"
@@ -182,48 +190,6 @@ extern "C" {
     "   poll();"
     "}"
 
-    "async function triggerHardwareScan() {"
-    "   const btn = document.getElementById('scanButton');"
-    "   const btnText = document.getElementById('scanButtonText');"
-    "   const progContainer = document.getElementById('progressContainer');"
-    "   const progBar = document.getElementById('progressBar');"
-
-    "   if (!btn || !btnText) return;"
-
-    "   btn.disabled = true;"
-    "   btn.style.opacity = '0.6';"
-    "   btnText.textContent = 'Scanning...';"
-
-    "   if (progContainer && progBar) {"
-    "       progContainer.style.display = 'block';"
-    "       progBar.style.width = '20%';"
-    "   }"
-
-    "   try {"
-    "       setTimeout(() => { if(progBar) progBar.style.width = '60%'; }, 200);"
-
-    "       const r = await fetch('/api/scan', { method: 'POST' });"
-    "       if (!r.ok) throw new Error('Hardware backplane failed discovery response');"
-            
-    "       if(progBar) progBar.style.width = '100%';"
-    "       await new Promise(resolve => setTimeout(resolve, 150));"
-
-    "       modulesCreated = false;"
-    "       await loadData();"
-
-    "   } catch(e) {"
-    "       console.error('Scan Execution Error:', e);"
-    "       alert('Hardware scan failed. Check connections.');"
-    "   } finally {"
-    "       btn.disabled = false;"
-    "       btn.style.opacity = '1.0';"
-    "       btnText.textContent = 'Scan';"
-            
-    "       if (progContainer) progContainer.style.display = 'none';"
-    "       if (progBar) progBar.style.width = '0%';"
-    "   }"
-    "}"
-
     "function updateSummaryTable(data) {"
     "   const counts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0 };"
     "   data.forEach(io => {"
@@ -260,11 +226,14 @@ extern "C" {
     "   }"
     "   chTable += '</table>';"
 
+    "const stateString = nmtStates[io.state] || `Unknown (${io.state})`;"
+    
     "   tooltip.innerHTML = `"
     "       <b>${p.name} Module (ID: ${io.id})</b><br/>"
     "       <hr style='border:0; border-top:1px solid #555'/>"
     "       Serial Number: ${io.serialNumber || 'N/A'}<br/>"
     "       HW: ${io.hwVer || 'N/A'} | FW: ${io.fwVer || 'N/A'}<br/>"
+    "       IO State: <span style=\"color: ${io.state === 5 ? '#00ff66' : '#ff4444'}\">${stateString}</span><br/>"
     "       Last Error Type: <span style='color:${io.lastErrorType !== 0 ? \"#ff4444\":\"#00ff66\"}'>${io.lastErrorType}</span><br/>"
     "       Last Error Code: <span style='color:${io.lastErrorCode !== 0 ? \"#ff4444\":\"#00ff66\"}'>${io.lastErrorCode}</span><br/>"
     "       ${chTable}"
@@ -291,7 +260,7 @@ extern "C" {
     "   activeModuleId = null;"
     "   if(tooltip) tooltip.style.display = 'none';"
     "}"
-
+    
     "function updateModule(io) {"
     "   const m = moduleMap[io.id];"
     "   if (!m) return;"
@@ -392,8 +361,94 @@ extern "C" {
     "}"
 
     "async function poll(){"
-    "  await loadData();"
-    "  setTimeout(poll,50);"
+    "  if (!scanInProgress) await loadData();"
+    "  setTimeout(poll,20);"
+    "}"
+
+    "const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));"
+    "async function triggerHardwareScan() {"
+    "    scanInProgress = true;"
+    "    const btn = document.getElementById('scanButton');"
+    "    const btnText = document.getElementById('scanButtonText');"
+    "    const progContainer = document.getElementById('progressContainer');"
+    "    const progBar = document.getElementById('progressBar');"
+    "    if (!btn || !btnText) return;"
+
+    "    btn.disabled = true;"
+    "    btn.style.opacity = '0.6';"
+    "    btnText.textContent = 'Scanning...';"
+    "    if (progContainer && progBar) {"
+    "        progContainer.style.display = 'block';"
+    "        progBar.style.width = '10%';"
+    "    }"
+
+    "    try {"
+             //Trigger the scan
+    "        const r = await fetch('/api/scan', { method: 'POST' });"
+    "        if (!r.ok) throw new Error(`Server returned status: ${r.status}`);"
+    "        const res = await r.json();"
+
+    "        if (res.status === 'busy') {"
+    "            alert('Scan deferred: Bus scan already running.');"
+    "            return;"
+    "        }"
+
+             // Poll for completion (max 15s, 500ms interval)
+    "        if (progBar) progBar.style.width = '30%';"
+    "        const MAX_WAIT_MS = 60000;"
+    "        const POLL_INTERVAL_MS = 1000;"
+    "        const deadline = Date.now() + MAX_WAIT_MS;"
+    "        let scanDone = false;"
+
+    "        while (Date.now() < deadline) {"
+    "            await sleep(POLL_INTERVAL_MS);"
+    "            try {"
+    "                const sr = await fetch('/api/scan/status');"
+    "                if (sr.ok) {"
+    "                    const s = await sr.json();"
+    "                    if (s.status === 'done') {"
+    "                        scanDone = true;"
+    "                        break;"
+    "                    } else if (s.status === 'error') {"
+    "                        throw new Error('MCU reported scan error: ' + (s.message || ''));"
+    "                    }"
+    "                }"
+    "            } catch(pollErr) {"
+    "                console.warn('Poll attempt failed:', pollErr);"
+    "            }"
+
+                 // Animate progress bar between 30%–90% while waiting
+    "            if (progBar) {"
+    "                const elapsed = MAX_WAIT_MS - (deadline - Date.now());"
+    "                const pct = 30 + Math.min(60, (elapsed / MAX_WAIT_MS) * 60);"
+    "                progBar.style.width = pct + '%';"
+    "            }"
+    "        }"
+
+    "        if (!scanDone) {"
+    "            throw new Error('Scan timed out after 15 seconds.');"
+    "        }"
+
+             //Clear rack and reload fresh data
+    "        if (progBar) progBar.style.width = '95%';"
+    "        const rack = document.getElementById('io-rack');"
+    "        if (rack) rack.innerHTML = '';"
+    "        moduleMap = {};"
+    "        modulesCreated = false;"
+    "        await loadData();"
+    "        if (progBar) progBar.style.width = '100%';"
+
+    "    } catch(e) {"
+    "        console.error('Scan Execution Error:', e);"
+    "        alert(`Hardware scan failed. Reason: ${e.message}`);"
+    "    } finally {"
+    "        scanInProgress = false;"
+    "        btn.disabled = false;"
+    "        btn.style.opacity = '1.0';"
+    "        btnText.textContent = 'Scan';"
+    "        if (progContainer) progContainer.style.display = 'none';"
+    "        if (progBar) progBar.style.width = '0%';"
+    "    }"
     "}"
 
     "async function init(){"

@@ -39,11 +39,11 @@ MSRAM
         (Range 70080000 - 700C7FFF; Size 288 KB)
     ----------------------------------------------------------
     Reserved (Separated cores)
-        0x700C8000 - 0x700C9FFF (8 KB)
+        0x700C8000 - 0x700C8FFF (4 KB)
     ----------------------------------------------------------
     Core1
-        MSRAM : ORIGIN = 0x700CA000, LENGTH = 0x106000
-        (Range 700CA000 - 701CFFFF; Size 1.024 MB + 24 KB)
+        MSRAM : ORIGIN = 0x700C9000, LENGTH = 0x107000
+        (Range 700CA000 - 701CFFFF; Size 1.024 MB + 28 KB)
 --------------------------------------------------------------
 USER_SHM_MEM
     USER_SHM_MEM : ORIGIN = 0x701D0000, LENGTH = 0x4000

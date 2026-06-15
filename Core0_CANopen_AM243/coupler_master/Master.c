@@ -87,7 +87,7 @@ task_t task[] =
     {TASK_CAN_TPDO, configMAX_PRIORITIES-3, TPDO_TASK_SIZE,  gTPDOTaskStack,  &gTPDOTaskObj,  NULL, SendPDOLoop}
 };
 
-static uint8_t sys_cmd = SYS_NO_EVENT;
+static uint8_t sys_cmd = 0;
 static bool rescan_io = false;
 
 static void App_printCpuLoad();
@@ -562,6 +562,9 @@ void Master_preOperational(CO_Data* d)
 	// vTaskDelay(1000);
 
 	// Scan the network for slaves
+	app_ipc_sharemem_lock();
+	gSharedMem.ipc_sys.ws_scan_status = SCAN_STATUS_RUNNING;
+	app_ipc_sharemem_unlock();
 	while(get_scan_state() != SCAN_DONE){
 		IOCoupler_scan_task(d);
 		vTaskDelay(1);
@@ -588,6 +591,7 @@ void Master_preOperational(CO_Data* d)
 
 	app_ipc_sharemem_lock();
 	gSharedMem.ipc_sys.master_state = 1;
+	gSharedMem.ipc_sys.ws_scan_status = SCAN_STATUS_DONE;
 	app_ipc_sharemem_unlock();
 }
 
@@ -1137,11 +1141,18 @@ void master_loop(void *args)
 	
 	while(1){		
 		App_printCpuLoad();
-		
-		if(sys_cmd == SYS_CMD_MASTER_RESCAN){
+
+		app_ipc_sharemem_lock();
+		sys_cmd = gSharedMem.ipc_sys.ws_cmd;
+		app_ipc_sharemem_unlock();
+        if( sys_cmd == WS_SCAN_IO){
+			app_ipc_sharemem_lock();
+			gSharedMem.ipc_sys.ws_cmd = 0;
+			gSharedMem.ipc_sys.ws_scan_status = SCAN_STATUS_RUNNING;
+			app_ipc_sharemem_unlock();
 			DebugP_log("[MASTER] Software Restart Master...\r\n");
 			master_rescan();
-			sys_cmd = SYS_NO_EVENT;
+			sys_cmd = 0;
 		}
 
 		// print_all_io_values();
@@ -1164,6 +1175,7 @@ void master_loop(void *args)
 int master_main(void)
 {
 	canInit();
+	init_ipc_data(true);
 	
 	Master_Data.heartbeatError = Master_heartbeatError;
 	Master_Data.initialisation = Master_initialisation;
@@ -1211,11 +1223,6 @@ int master_main(void)
 }
 
 /******************************** API **************************************/
-void trigger_master_rescan(void) {
-	rescan_io = true;
-    sys_cmd = SYS_CMD_MASTER_RESCAN;
-}
-
 void get_master_firmware_ver(char *buff1, char *buff2, size_t dest_size) {
     if (buff1 == NULL || buff2 == NULL) return;
 	if (dest_size == 0) return;

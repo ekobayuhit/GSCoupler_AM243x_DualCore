@@ -146,7 +146,7 @@ int main(
     pCfg->drivers.app.pruicss.ethPhy1Id = CFG_BOARD_PRU_ICSS_ETHPHY_1_INSTANCE;
 
     /* Application UART driver configuration. */
-    pCfg->drivers.app.uart.instance = CONFIG_UART0;
+    // pCfg->drivers.app.uart.instance = CONFIG_UART0;
 
     /* Application LED's driver configuration */
 #ifndef ENABLE_INTERCORE_TUNNELING
@@ -206,6 +206,7 @@ int main(
     }
     
     init_ipc_sharemem();
+    init_ipc_data(false);
 
     OSAL_registerErrorHandler (EI_APP_TASK_osErrorHandlerCb);
 

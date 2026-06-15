@@ -53,11 +53,6 @@ typedef struct
 } task_t;
 
 typedef enum{
-    SYS_NO_EVENT = 0x00,
-    SYS_CMD_MASTER_RESCAN
-}sys_event_type_t;
-
-typedef enum{
     CANOPEN_IO_NO_ERR   = 0x00,
     CANOPEN_IO_EMCY,
     CANOPEN_IO_HEARTBEAT,
@@ -75,6 +70,5 @@ typedef struct
     uint8_t m_state;
 } ipc_var_t;
 
-void trigger_master_rescan(void);
 void get_master_firmware_ver(char *buff1, char *buff2, size_t dest_size);
 bool get_master_rescan_status(void);

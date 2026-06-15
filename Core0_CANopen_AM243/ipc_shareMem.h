@@ -1,6 +1,9 @@
 #ifndef IPC_SHARE_MEM_H
 #define IPC_SHARE_MEM_H
 
+#include <stdint.h>
+#include <stdbool.h>
+
 /******************************************************************/
 // Protocol
 #define IOCOUPLER_ETHERNETIP    (1)
@@ -48,6 +51,13 @@ enum io_device_type {
     IO_DEVICE_TYPE_RTDY = 0x07,
     IO_DEVICE_TYPE_RTDB = 0x08,
 };
+
+typedef enum {
+    SCAN_STATUS_IDLE    = 0,
+    SCAN_STATUS_RUNNING = 1,
+    SCAN_STATUS_DONE    = 2,
+    SCAN_STATUS_ERROR   = 3
+} WSScanStatus_t;
 
 typedef enum {
     SCAN_IDLE = 0,
@@ -173,10 +183,11 @@ typedef struct {
 typedef struct {
     uint8_t active_protocol;
     uint8_t master_state;
-    uint8_t ws_scan_status;
     uint8_t explicit_pad0;       // Aligns enum execution scope
+    uint8_t explicit_pad1;       // Aligns enum execution scope
     
     ws_cmd_t ws_cmd;             // enum is 4 bytes
+    WSScanStatus_t ws_scan_status; // enum is 4 bytes
     
     core_stats_t core0_stats;
     core_stats_t core1_stats;
@@ -199,6 +210,7 @@ typedef struct {
 } __attribute__((aligned(128))) ipc_data_t;
 
 void init_ipc_sharemem(void);
+void init_ipc_data(bool is_core0);
 void app_ipc_sharemem_lock(void);
 void app_ipc_sharemem_unlock(void);
 

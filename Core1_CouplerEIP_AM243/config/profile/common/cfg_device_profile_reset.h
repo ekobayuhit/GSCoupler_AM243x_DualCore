@@ -101,7 +101,7 @@
 #define CFG_DEVICE_PROFILE_RESET_FACTORY_DEFAULT_TCPIP_CFG_CONTROL                   EIP_eCFGMETHOD_STATIC  /* Statically-assigned IP address - Ch. 5-4.3.2.3.1 */
 
 /* Interface Configuration (Attribute 5) - Ch. 5-4.3.2 */
-#define CFG_DEVICE_PROFILE_RESET_FACTORY_DEFAULT_TCPIP_IP_ADDRESS                    0xc0a8010a    /* 192.168.1.10 */
+#define CFG_DEVICE_PROFILE_RESET_FACTORY_DEFAULT_TCPIP_IP_ADDRESS                    0xc0a80138    /* 192.168.1.56 */
 #define CFG_DEVICE_PROFILE_RESET_FACTORY_DEFAULT_TCPIP_NW_MASK                       0xffffff00    /* 255.255.255.0 */
 #define CFG_DEVICE_PROFILE_RESET_FACTORY_DEFAULT_TCPIP_GW_ADDRESS                    0xc0a80101    /* 192.168.1.1 */
 #define CFG_DEVICE_PROFILE_RESET_FACTORY_DEFAULT_TCPIP_SERVER_NAME_1                 0x00000000    /* 0.0.0.0 */

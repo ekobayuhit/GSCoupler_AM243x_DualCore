@@ -90,6 +90,23 @@ void app_ipc_sharemem_unlock(void)
     return;
 }
 
+void init_ipc_data(bool is_core0){
+    app_ipc_sharemem_lock();
+    if(is_core0){
+        memset(&gSharedMem.IOCoupler_Devices, 0, sizeof(gSharedMem.IOCoupler_Devices));
+        memset(gSharedMem.buff_in, 0 , sizeof(gSharedMem.buff_in));
+        memset(gSharedMem.buff_out, 0, sizeof(gSharedMem.buff_out));
+        memset(&gSharedMem.ipc_sys.core0_stats, 0, sizeof(gSharedMem.ipc_sys.core0_stats));
+        gSharedMem.ipc_sys.master_state = 0;
+        gSharedMem.ipc_sys.ws_scan_status = SCAN_STATUS_IDLE;
+    }else{
+        memset(&gSharedMem.ipc_sys.core1_stats, 0, sizeof(gSharedMem.ipc_sys.core1_stats));
+        gSharedMem.ipc_sys.active_protocol = 0;
+        gSharedMem.ipc_sys.ws_cmd = WS_NONE;
+    }
+    app_ipc_sharemem_unlock();
+}
+
 static const char *IO_typename(uint32_t productCode)
 {
     switch (productCode) {

@@ -63,7 +63,7 @@
  */
 #define WEB_SERVER_TASK_STACK_SIZE     3072U
 
-#define MAX_HTML_SIZE 8192
+#define MAX_HTML_SIZE 8190
 /* Extern */
 extern volatile ipc_data_t gSharedMem;
 extern const unsigned char gsp_favicon_ico[];
@@ -256,7 +256,12 @@ static int WEB_SERVER_init(int *pSockFd_p)
 
         if (ret == 0)
         {
-            ret = listen(sock, 3);
+            // ret = listen(sock, 3);
+
+            // Enable immediate address reuse to clean up dead bindings quickly
+            int reuse = 1;
+            setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
+            ret = listen(sock, 8); // Increased queue
             if (ret == 0)
             {
                 *pSockFd_p = sock;
@@ -561,56 +566,93 @@ static int WEB_SERVER_processGetAndRespond(int clientFd_p, const char *const pBu
             }
         }
     }
-    else if ((strncmp(&pBuf_p[0], "/api/scan", 9) == 0))
-    {   
-        // Handle API Hardware Scan Requests
+    else if ((strncmp(&pBuf_p[0], "/api/scan/status", 16) == 0))
+    {
         char header[256];
-        char resp[64];
+        char body[128];
+        int bodyLen = 0;
+        int hLen    = 0;
+
+        app_ipc_sharemem_lock();
+        WSScanStatus_t scanStatus = gSharedMem.ipc_sys.ws_scan_status;
+        app_ipc_sharemem_unlock();
+
+        switch (scanStatus)
+        {
+            case SCAN_STATUS_RUNNING:  /* BUSY / IN PROGRESS */
+                bodyLen = snprintf(body, sizeof(body), "{\"status\":\"scanning\"}");
+                break;
+            case SCAN_STATUS_DONE:  /* DONE */
+                bodyLen = snprintf(body, sizeof(body), "{\"status\":\"done\"}");
+                break;
+            case SCAN_STATUS_ERROR:  /* ERROR */
+                bodyLen = snprintf(body, sizeof(body), "{\"status\":\"error\",\"message\":\"Scan failed\"}");
+                break;
+            case SCAN_STATUS_IDLE:  /* IDLE */
+            default:
+                bodyLen = snprintf(body, sizeof(body), "{\"status\":\"idle\"}");
+                break;
+        }
+
+        hLen = snprintf(
+            header,
+            sizeof(header),
+            "HTTP/1.1 200 OK\r\n"
+            "Content-Type: application/json\r\n"
+            "Content-Length: %d\r\n"
+            "Connection: close\r\n"
+            "\r\n",
+            bodyLen);
+
+        ret = send(clientFd_p, header, hLen, 0);
+        if (ret > 0)
+        {
+            ret = send(clientFd_p, body, bodyLen, 0);
+        }
+    }
+    else
+    {
+        // Unknown get request
+        ret = send(clientFd_p, response_404, strlen(response_404), 0);
+    }
+    return ret;
+}
+
+/**
+ * @brief Handles incoming HTTP POST requests and guarantees a clean response layout
+ */
+static int WEB_SERVER_processPostAndRespond(int clientFd_p, const char *const pBuf_p)
+{
+    int ret = -1;
+    
+    // Ensure the request target starts with your API path
+    if ((strncmp(&pBuf_p[0], "/api/scan", 9) == 0))
+    {   
+        char header[256];
+        char resp[128]; // Increased size slightly to safely prevent any buffer clipping
         int len;
+
+        DebugP_log("Get cmd to re-scan IO !\r\n");
         
         app_ipc_sharemem_lock();
-        gSharedMem.ipc_sys.ws_cmd = WS_SCAN_IO;
-        gSharedMem.ipc_sys.ws_scan_status = 1; // 1 = BUSY / IN PROGRESS
-        app_ipc_sharemem_unlock();
-
-        int timeout_ms = 10000; 
-        int polled_time = 0;
-        int scan_success = 0;
-
-        while (polled_time < timeout_ms)
+        
+        if (gSharedMem.ipc_sys.ws_scan_status == SCAN_STATUS_RUNNING)
         {
-            vTaskDelay(5000); // Sleep for 20ms
-            polled_time += 20;
-
-            app_ipc_sharemem_lock();
-            if (gSharedMem.ipc_sys.ws_scan_status == 2) // 2 = SUCCESS
-            {
-                scan_success = 1;
-                app_ipc_sharemem_unlock();
-                break;
-            }
-            else if (gSharedMem.ipc_sys.ws_scan_status == 3) // 3 = ERROR
-            {
-                scan_success = 0;
-                app_ipc_sharemem_unlock();
-                break;
-            }
             app_ipc_sharemem_unlock();
+            
+            DebugP_log("Scan ignored: Hardware scan already in progress.\r\n");
+            snprintf(resp, sizeof(resp), "{\"status\":\"busy\",\"message\":\"Scan already in progress\"}");
+        }
+        else 
+        {
+            gSharedMem.ipc_sys.ws_scan_status = SCAN_STATUS_IDLE;
+            gSharedMem.ipc_sys.ws_cmd = WS_SCAN_IO;
+            app_ipc_sharemem_unlock();
+
+            DebugP_log("Scan initiated successfully in background.\r\n");
+            snprintf(resp, sizeof(resp), "{\"status\":\"initiated\",\"message\":\"Scan task started background\"}");
         }
 
-        app_ipc_sharemem_lock();
-        gSharedMem.ipc_sys.ws_cmd = WS_NONE;
-        gSharedMem.ipc_sys.ws_scan_status = 0; // 0 = IDLE
-        app_ipc_sharemem_unlock();
-
-        if (scan_success)
-        {
-            snprintf(resp, sizeof(resp), "{\"status\":\"success\"}");
-        }
-        else
-        {
-            snprintf(resp, sizeof(resp), "{\"status\":\"error\",\"message\":\"Timeout or hardware error\"}");
-        }
         len = strlen(resp);
 
         int hlen = snprintf(
@@ -626,14 +668,23 @@ static int WEB_SERVER_processGetAndRespond(int clientFd_p, const char *const pBu
         ret = send(clientFd_p, header, hlen, 0);
         if (ret > 0) 
         {
-            send(clientFd_p, resp, len, 0);
+            ret = send(clientFd_p, resp, len, 0);
         }
+        
+        DebugP_log("POST /api/scan response dispatched instantly!\r\n");
     }
     else
     {
-        // Unknown get request
-        ret = send(clientFd_p, response_404, strlen(response_404), 0);
+        // Default Fallback: Route Not Found (404)
+        const char* http_404_err = 
+            "HTTP/1.1 404 Not Found\r\n"
+            "Content-Length: 0\r\n"
+            "Connection: close\r\n"
+            "\r\n";
+            
+        ret = send(clientFd_p, http_404_err, strlen(http_404_err), 0);
     }
+
     return ret;
 }
 
@@ -711,8 +762,26 @@ static void WEB_SERVER_task(void* pArgs_p)
                         }
                     }
                 }
+                else if (strncmp(&aBuf[0], "POST ", 5) == 0)
+                {
+                    // Pass the buffer starting immediately after "POST " to catch the route string
+                    ret = WEB_SERVER_processPostAndRespond(clientFd, &aBuf[5]);
+                    if (ret <= 0)
+                    {
+                        if (WEB_SERVER_isFatalErr(errno))
+                        {
+                            DebugP_log("Failed to process POST request : %d : %s \r\n", -errno,
+                                       WEB_SERVER_strError(errno));
+                            break;
+                        }
+                    }
+                }
             }
 
+            char drainBuf[64];
+            while (recv(clientFd, drainBuf, sizeof(drainBuf), MSG_DONTWAIT) > 0) {
+                // Spooling out unread browser data bytes to guarantee a clean TCP FIN handshake
+            }
             ret = shutdown(clientFd, SHUT_RDWR);
             if (ret != 0)
             {
