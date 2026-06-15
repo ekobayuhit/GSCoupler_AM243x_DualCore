@@ -374,6 +374,44 @@ static const char style_iomap_css[] =
     "   background: #f0faff;"
     "   cursor: help;"
     "}"
+
+    /* ===== SCAN BUTTON ===== */
+    "#scanButton {"
+    "   background: #ff7f32;"
+    "   color: white;"
+    "   border: none;"
+    "   padding: 8px 16px;"
+    "   border-radius: 4px;"
+    "   cursor: pointer;"
+    "   font-size: 13px;"
+    "}"
+
+    "#scanButton:disabled {"
+    "   cursor: not-allowed;"
+    "}"
+
+    /* ===== PROGRESS BAR ===== */
+    "#progressContainer {"
+    "   display: none;"           /* hidden by default, shown via JS */
+    "   width: 100%;"
+    "   height: 6px;"
+    "   background: #e0e0e0;"
+    "   border-radius: 4px;"
+    "   overflow: hidden;"
+    "   margin-top: 8px;"
+    "   margin-bottom: 1px;"
+    "}"
+
+    "#progressBar {"
+    "   height: 100%;"
+    "   width: 0%;"
+    "   background: #ff7f32;"
+    "   border-radius: 3px;"
+    "   transition: width 0.3s ease;"
+    "}"
+
+    "@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }"
+    ".scan-spinner { animation: pulse 1.5s ease-in-out infinite; }"
     ;
 
 static const char header_html[] =
@@ -527,8 +565,9 @@ static const char page_iomap[] =
 "       <div style=\"display:flex; align-items:center; gap:15px;\">"
 
 "           <div>"
-"               <div id=\"progressContainer\" style=\"display:none; width:150px; height:6px; background:#eee; border-radius:4px; overflow:hidden; margin-bottom:8px;\">"
-"                   <div id=\"progressBar\" style=\"width:0%; height:100%; background:var(--primary-orange); transition: width 0.1s ease;\"></div>"
+
+"               <div id=\"progressContainer\">"
+"                   <div id=\"progressBar\"></div>"
 "               </div>"
 
 "               <button id=\"scanButton\" style=\"width:150px; height:36px; border:none; border-radius:6px; "

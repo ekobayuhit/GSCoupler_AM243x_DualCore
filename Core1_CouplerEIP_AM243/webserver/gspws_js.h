@@ -123,6 +123,23 @@ extern "C" {
     "   7:{name:'RTDY',channels:6,digital:false},"
     "   8:{name:'RTDB',channels:6,digital:false}"
     "};"
+    
+    "function showToast(message, type) {"
+    "   const colors = { success: '#00ff66', error: '#ff4444', warn: '#ffaa00', info: '#4da6ff' };"
+    "   const icons  = { success: '✅', error: '❌', warn: '⚠️', info: 'ℹ️' };"
+    "   const toast = document.createElement('div');"
+    "   toast.style.cssText = ["
+    "       'position:fixed;top:20px;right:20px;z-index:9999;',"
+    "       'background:#1e1e2e;color:#eee;border-radius:8px;',"
+    "       'padding:14px 18px;max-width:320px;font-size:13px;',"
+    "       'box-shadow:0 4px 16px rgba(0,0,0,0.5);',"
+    "       `border-left:4px solid ${colors[type]||colors.info};`,"
+    "       'transition:opacity 0.4s ease'"
+    "   ].join('');"
+    "   toast.innerHTML = `<b>${icons[type]||''} ${message}</b>`;"
+    "   document.body.appendChild(toast);"
+    "   setTimeout(() => { toast.style.opacity='0'; setTimeout(()=>toast.remove(),400); }, 3500);"
+    "}"
 
     "function getBit(v,b){return (v>>b)&1;}"
 
@@ -382,6 +399,23 @@ extern "C" {
     "        progBar.style.width = '10%';"
     "    }"
 
+    "    const rack = document.getElementById('io-rack');"
+    "    if (rack) {"
+    "        rack.innerHTML = `"
+    "            <div style='"
+    "                display:flex; flex-direction:column; align-items:center; justify-content:center;"
+    "                width:100%; height:300px; gap:16px;"
+    "                color:#888; font-family:sans-serif;"
+    "            '>"
+    "                <div class='scan-spinner' style='font-size:48px'>⚙️</div>"
+    "                <div style='font-size:20px; font-weight:600; color:#555'>Scanning in progress...</div>"
+    "                <div style='font-size:13px; color:#aaa'>Please wait while devices are being discovered</div>"
+    "            </div>"
+    "        `;"
+    "        modulesCreated = false;"
+    "        moduleMap = {};"
+    "    }"
+
     "    try {"
              //Trigger the scan
     "        const r = await fetch('/api/scan', { method: 'POST' });"
@@ -389,7 +423,7 @@ extern "C" {
     "        const res = await r.json();"
 
     "        if (res.status === 'busy') {"
-    "            alert('Scan deferred: Bus scan already running.');"
+    "            showToast('Bus scan already running, please wait.', 'warn');"
     "            return;"
     "        }"
 
@@ -402,6 +436,7 @@ extern "C" {
 
     "        while (Date.now() < deadline) {"
     "            await sleep(POLL_INTERVAL_MS);"
+    "            let pollError = null;"
     "            try {"
     "                const sr = await fetch('/api/scan/status');"
     "                if (sr.ok) {"
@@ -410,25 +445,24 @@ extern "C" {
     "                        scanDone = true;"
     "                        break;"
     "                    } else if (s.status === 'error') {"
-    "                        throw new Error('MCU reported scan error: ' + (s.message || ''));"
+    "                        pollError = new Error('MCU reported scan error: ' + (s.message || ''));"
     "                    }"
     "                }"
-    "            } catch(pollErr) {"
-    "                console.warn('Poll attempt failed:', pollErr);"
+    "            } catch(fetchErr) {"
+    "                console.warn('Poll attempt failed:', fetchErr);"  // network errors only
     "            }"
 
-                 // Animate progress bar between 30%–90% while waiting
+    "            if (pollError) throw pollError;"  // now escapes the catch above
+
     "            if (progBar) {"
     "                const elapsed = MAX_WAIT_MS - (deadline - Date.now());"
     "                const pct = 30 + Math.min(60, (elapsed / MAX_WAIT_MS) * 60);"
     "                progBar.style.width = pct + '%';"
     "            }"
     "        }"
-
     "        if (!scanDone) {"
-    "            throw new Error('Scan timed out after 15 seconds.');"
+    "            throw new Error('Scan timed out after 60 seconds.');"
     "        }"
-
              //Clear rack and reload fresh data
     "        if (progBar) progBar.style.width = '95%';"
     "        const rack = document.getElementById('io-rack');"
@@ -437,17 +471,20 @@ extern "C" {
     "        modulesCreated = false;"
     "        await loadData();"
     "        if (progBar) progBar.style.width = '100%';"
-
+    "        showToast('Hardware scan complete! Modules updated.', 'success');"
     "    } catch(e) {"
     "        console.error('Scan Execution Error:', e);"
-    "        alert(`Hardware scan failed. Reason: ${e.message}`);"
+    "        showToast(`Scan failed: ${e.message}`, 'error');"
     "    } finally {"
     "        scanInProgress = false;"
     "        btn.disabled = false;"
     "        btn.style.opacity = '1.0';"
     "        btnText.textContent = 'Scan';"
-    "        if (progContainer) progContainer.style.display = 'none';"
-    "        if (progBar) progBar.style.width = '0%';"
+             // Give user time to see 100% before hiding
+    "        setTimeout(() => {"
+    "            if (progContainer) progContainer.style.display = 'none';"
+    "            if (progBar) progBar.style.width = '0%';"
+    "        }, 800);"  // 800ms delay
     "    }"
     "}"
 
