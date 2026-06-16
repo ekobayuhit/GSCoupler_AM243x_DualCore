@@ -35,15 +35,12 @@ Memory Configuration
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 MSRAM
     Core0
-        MSRAM : ORIGIN = 0x70080000, LENGTH = 0x48000
-        (Range 70080000 - 700C7FFF; Size 288 KB)
-    ----------------------------------------------------------
-    Reserved (Separated cores)
-        0x700C8000 - 0x700C83FF (1 KB)
+        MSRAM : ORIGIN = 0x70080000, LENGTH = 0x41A00
+        (Range 0x70080000 - 700C19FF; Size 262 KB)
     ----------------------------------------------------------
     Core1
-        MSRAM : ORIGIN = 0x700C8400, LENGTH = 0x107400
-        (Range 700CA000 - 701CFFFF; Size 1.024 MB + 32 KB)
+        MSRAM : ORIGIN = 0x700C1A00, LENGTH = 0x10E600
+        (Range 0x700C6A00 - 0x701CFFFF; Size 1.061 MB)
 --------------------------------------------------------------
 USER_SHM_MEM
     USER_SHM_MEM : ORIGIN = 0x701D0000, LENGTH = 0x4000

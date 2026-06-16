@@ -47,46 +47,122 @@ extern "C" {
 #endif
 
     static const char main_js[] =
-    "function getCpuLoad()"
-    "{"
-        "var cpuLoad = 0;"
-        "function getCpuLoadComplete()"
-        "{"
-            "if(cpuLoad.readyState == 4)"
-            "{"
-                "if(cpuLoad.status == 200)"
-                "{"
-                    "if(cpuLoad.responseText != null)"
-                    "{"
-                        "var rowsNum = 20;"
-                        "var id = \"\";"
-                        "var row = 0;"
-                        "var data = cpuLoad.responseText;"
-                        "const dataArray = data.split(\",\");"
-                        "for (let i = 0; i < dataArray.length; i = i + 2)"
-                        "{"
-                            "row = i/2;"
-                            "if (rowsNum > i/2)"
-                            "{"
-                                "id = \"r\" + row + \"c0\";"
-                                "document.getElementById(id).innerHTML = dataArray[i];"
-                                "id = \"r\" + row + \"c1\";"
-                                "document.getElementById(id).innerHTML = dataArray[i + 1];"
-                            "}"
-                        "}"
-                    "}"
-                "}"
+    "const LEC_STR = ['No error','Stuff','Form','Ack','Bit1','Bit0','CRC','No change'];"
+    "const ACT_STR = ['Sync','Idle','Rx','Tx'];"
+
+    "function setMcanErr(id, val, max){"
+        "var el = document.getElementById(id);"
+        "if(el) el.textContent = val;"
+        "var bar = document.getElementById(id+'_bar');"
+        "if(bar) bar.style.width = Math.min(val/max*100,100)+'%';"
+        "var pill = document.getElementById(id+'_pill');"
+        "if(pill){"
+            "if(val===0){pill.textContent='OK'; pill.style.background='#e8f5e9'; pill.style.color='#388e3c';}"
+            "else if(val<96){pill.textContent='WARN'; pill.style.background='#fff8e1'; pill.style.color='#f57f17';}"
+            "else{pill.textContent='ERROR'; pill.style.background='#ffebee'; pill.style.color='#c62828';}"
+        "}"
+    "}"
+
+    "function setFlag(id, active, label){"
+        "var dot = document.getElementById(id+'_dot');"
+        "if(dot) dot.style.background = active ? '#e65100' : '#ccc';"
+        "var val = document.getElementById(id+'_val');"
+        "if(val){ val.textContent = active ? label : 'OK'; val.style.color = active ? '#e65100' : '#aaa'; }"
+    "}"
+
+    "function updateMcan(mcanLines){"
+        "var mcan = {};"
+        "for(var i=0;i<mcanLines.length;i++){"
+            "var parts = mcanLines[i].split(',');"
+            "if(parts.length===2) mcan[parts[0]] = parseInt(parts[1],10);"
+        "}"
+
+        /* Error counters */
+        "setMcanErr('mcan_rec',  mcan.REC||0, 255);"
+        "setMcanErr('mcan_tec',  mcan.TEC||0, 255);"
+        "setMcanErr('mcan_cel',  mcan.CEL||0, 255);"
+
+        /* Protocol status */
+        "var el;"
+        "var cpu = mcan.CPU||0;"
+        "el=document.getElementById('mcan_cpuload'); if(el) el.textContent=cpu;"
+        "el=document.getElementById('mcan_cpuload_dec'); if(el) el.textContent=cpu.toFixed(2)+'%';"
+        
+        "var mcan_hb = mcan.HB||0;"
+        "el=document.getElementById('mcan_hb');     if(el) el.textContent=mcan_hb;"
+        "el=document.getElementById('mcan_hb_dec'); if(el) el.textContent=mcan_hb;"
+
+        "var lec = mcan.LEC||0;"
+        "el=document.getElementById('mcan_lec');     if(el) el.textContent=lec;"
+        "el=document.getElementById('mcan_lec_dec'); if(el) el.textContent=LEC_STR[lec]||'-';"
+
+        "var act = mcan.ACT||0;"
+        "el=document.getElementById('mcan_act');     if(el) el.textContent=act;"
+        "el=document.getElementById('mcan_act_dec'); if(el) el.textContent=ACT_STR[act]||'-';"
+
+        "var dlec = mcan.DLEC||0;"
+        "el=document.getElementById('mcan_dlec');     if(el) el.textContent=dlec;"
+        "el=document.getElementById('mcan_dlec_dec'); if(el) el.textContent=LEC_STR[dlec]||'-';"
+
+        "var tdcv = mcan.TDCV||0;"
+        "el=document.getElementById('mcan_tdcv');     if(el) el.textContent=tdcv;"
+        "el=document.getElementById('mcan_tdcv_dec'); if(el) el.textContent=(tdcv===0?'No delay comp.':tdcv+' mtq');"
+
+        /* Bus state flags */
+        "setFlag('mcan_ep',   mcan.EP||0,   'PASSIVE');"
+        "setFlag('mcan_rp', mcan.RP||0, 'PASSIVE');"
+        "setFlag('mcan_warn', mcan.WARN||0, 'WARN');"
+        "setFlag('mcan_boff', mcan.BOFF||0, 'BUS-OFF');"
+        "setFlag('mcan_resi', mcan.RESI||0, 'ON');"
+        "setFlag('mcan_rbrs', mcan.RBRS||0, 'ON');"
+        "setFlag('mcan_rfdf', mcan.RFDF||0, 'ON');"
+        "setFlag('mcan_pxe',  mcan.PXE||0,  'ON');"
+    "}"
+    
+    "function getCpuLoad(){"
+        "var xhr = new XMLHttpRequest();"
+        "if(!xhr){ setTimeout('getCpuLoad()',1000); return; }"
+
+        "xhr.open('GET','/cpuLoad?id='+Math.random(),true);"
+        "xhr.responseType = 'text';"
+
+        "xhr.onreadystatechange = function(){"
+            "if(xhr.readyState!==4) return;"
+            "if(xhr.status!==200 || !xhr.responseText){ setTimeout('getCpuLoad()',1000); return; }"
+
+            "var text = xhr.responseText;"
+            "var lines = text.split('\\n').filter(function(l){ return l.length>0; });"
+
+            /* Split on the MCAN sentinel */
+            "var mcanStart = lines.indexOf('---MCAN---');"
+            "var cpuLines  = mcanStart===-1 ? lines : lines.slice(0, mcanStart);"
+            "var mcanLines = mcanStart===-1 ? []    : lines.slice(mcanStart+1);"
+
+            /* CPU rows — split each line on first comma only */
+            "var rowsNum = 20;"
+            "for(var i=0;i<cpuLines.length;i++){"
+                "if(i>=rowsNum) break;"
+                "var sep = cpuLines[i].indexOf(',');"
+                "if(sep===-1) continue;"
+                "var name = cpuLines[i].substring(0,sep);"
+                "var load = cpuLines[i].substring(sep+1);"
+                "var el;"
+                "el=document.getElementById('r'+i+'c0'); if(el) el.innerHTML=name;"
+                "el=document.getElementById('r'+i+'c1'); if(el) el.innerHTML=load;"
+
+                /* Update progress bar */
+                "var pct = parseFloat(load);"
+                "var bar=document.getElementById('bar'+i);"
+                "if(bar) bar.style.width=(isNaN(pct)?0:Math.min(pct,100))+'%';"
             "}"
-        "}"
-        "cpuLoad = new XMLHttpRequest();"
-        "if(cpuLoad)"
-        "{"
-            "cpuLoad.open(\"GET\", \"/cpuLoad?id=\" + Math.random(), true);"
-            "cpuLoad.responseType = \"text\";"
-            "cpuLoad.onreadystatechange = getCpuLoadComplete;"
-            "cpuLoad.send(null);"
-        "}"
-        "setTimeout('getCpuLoad()', 1000);"
+
+            /* MCAN section */
+            "if(mcanLines.length>0) updateMcan(mcanLines);"
+
+            "setTimeout('getCpuLoad()',1000);"
+        "};"
+
+        "xhr.send(null);"
     "}";
 
     static const char iomap_js[] =

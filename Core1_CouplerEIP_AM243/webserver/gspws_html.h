@@ -503,10 +503,8 @@ static const char page_main[] =
 "   System CPU Load"
 "</div>"
 
-"<div style=\"background:#fff; border-radius:10px; padding:15px; box-shadow:0 2px 6px rgba(0,0,0,0.08);\">"
-
+"<div style=\"background:#fff; border-radius:10px; padding:15px; box-shadow:0 2px 6px rgba(0,0,0,0.08); margin-bottom:24px;\">"
 "   <table id=\"cputable\" style=\"width:100%; border-collapse:collapse; font-size:13px;\">"
-
 "       <thead>"
 "           <tr style=\"background:#f5f5f5; text-align:left;\">"
 "               <th style=\"padding:8px;\">Task Name</th>"
@@ -514,7 +512,6 @@ static const char page_main[] =
 "               <th style=\"padding:8px; width:60px;\">%</th>"
 "           </tr>"
 "       </thead>"
-
 "       <tbody>"
 
 #define CPU_ROW(i) \
@@ -533,8 +530,108 @@ CPU_ROW(5)  CPU_ROW(6)  CPU_ROW(7)  CPU_ROW(8)  CPU_ROW(9)
 CPU_ROW(10) CPU_ROW(11) CPU_ROW(12) CPU_ROW(13) CPU_ROW(14)
 CPU_ROW(15) CPU_ROW(16) CPU_ROW(17) CPU_ROW(18) CPU_ROW(19)
 
+#undef CPU_ROW
+
 "       </tbody>"
 "   </table>"
+"</div>"
+
+/* ── Core 0 MCAN Statistics ──────────────────────────────────── */
+"<div class=\"section-title\" style=\"display:flex; align-items:center; gap:10px; font-size:18px; font-weight:600; margin-bottom:15px;\">"
+"   <svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\" style=\"color: var(--primary-orange);\">"
+"       <path d=\"M4 6h16M4 12h16M4 18h10\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" fill=\"none\"/>"
+"   </svg>"
+"   IO \xe2\x80\x94 Protocol Statistics"
+"</div>"
+
+"<div style=\"background:#fff; border-radius:10px; padding:15px; box-shadow:0 2px 6px rgba(0,0,0,0.08); margin-bottom:24px;\">"
+
+"   <div style=\"font-size:12px; font-weight:600; color:#888; text-transform:uppercase; letter-spacing:.05em; margin-bottom:8px;\">Error Counters</div>"
+"   <table style=\"width:100%; border-collapse:collapse; font-size:13px; margin-bottom:16px;\">"
+"       <thead>"
+"           <tr style=\"background:#f5f5f5; text-align:left;\">"
+"               <th style=\"padding:8px;\">Counter</th>"
+"               <th style=\"padding:8px; text-align:right;\">Value</th>"
+"               <th style=\"padding:8px; width:40%;\">Status</th>"
+"           </tr>"
+"       </thead>"
+"       <tbody>"
+
+#define MCAN_ERR_ROW(label, id_val, id_bar, id_pill) \
+"       <tr>" \
+"           <td style=\"padding:6px;\">" label "</td>" \
+"           <td style=\"padding:6px; text-align:right; font-family:monospace;\" id=\"" id_val "\">0</td>" \
+"           <td style=\"padding:6px;\">" \
+"               <div style=\"display:flex; align-items:center; gap:8px;\">" \
+"                   <div style=\"flex:1; background:#eee; border-radius:6px; height:8px; overflow:hidden;\">" \
+"                       <div id=\"" id_bar "\" style=\"width:0%; height:100%; background:var(--primary-orange); transition:width .4s;\"></div>" \
+"                   </div>" \
+"                   <span id=\"" id_pill "\" style=\"font-size:11px; padding:2px 7px; border-radius:10px; background:#e8f5e9; color:#388e3c; white-space:nowrap;\">OK</span>" \
+"               </div>" \
+"           </td>" \
+"       </tr>"
+
+MCAN_ERR_ROW("REC \xe2\x80\x94 Receive Error Counter", "mcan_rec", "mcan_rec_bar", "mcan_rec_pill")
+MCAN_ERR_ROW("TEC \xe2\x80\x94 Transmit Error Log",    "mcan_tec", "mcan_tec_bar", "mcan_tec_pill")
+MCAN_ERR_ROW("CEL \xe2\x80\x94 CAN Error Log Count",   "mcan_cel", "mcan_cel_bar", "mcan_cel_pill")
+
+#undef MCAN_ERR_ROW
+
+"       </tbody>"
+"   </table>"
+
+"   <div style=\"font-size:12px; font-weight:600; color:#888; text-transform:uppercase; letter-spacing:.05em; margin-bottom:8px;\">Protocol Status</div>"
+"   <table style=\"width:100%; border-collapse:collapse; font-size:13px; margin-bottom:16px;\">"
+"       <thead>"
+"           <tr style=\"background:#f5f5f5; text-align:left;\">"
+"               <th style=\"padding:8px;\">Field</th>"
+"               <th style=\"padding:8px; text-align:right;\">Raw</th>"
+"               <th style=\"padding:8px;\">Meaning</th>"
+"           </tr>"
+"       </thead>"
+"       <tbody>"
+
+#define MCAN_PSR_ROW(label, id_raw, id_decoded) \
+"       <tr>" \
+"           <td style=\"padding:6px;\">" label "</td>" \
+"           <td style=\"padding:6px; text-align:right; font-family:monospace;\" id=\"" id_raw "\">-</td>" \
+"           <td style=\"padding:6px; color:#555;\" id=\"" id_decoded "\">-</td>" \
+"       </tr>"
+
+MCAN_PSR_ROW("CPU \xe2\x80\x94 Mcan CPU Load", "mcan_cpuload",  "mcan_cpuload_dec")
+MCAN_PSR_ROW("HB \xe2\x80\x94 Mcan Heartbeat", "mcan_hb",  "mcan_hb_dec")
+MCAN_PSR_ROW("LEC \xe2\x80\x94 Last Error Code", "mcan_lec",  "mcan_lec_dec")
+MCAN_PSR_ROW("ACT \xe2\x80\x94 Activity",        "mcan_act",  "mcan_act_dec")
+MCAN_PSR_ROW("DLEC \xe2\x80\x94 Data Phase LEC", "mcan_dlec", "mcan_dlec_dec")
+MCAN_PSR_ROW("TDCV \xe2\x80\x94 TDC Value",      "mcan_tdcv", "mcan_tdcv_dec")
+
+#undef MCAN_PSR_ROW
+
+"       </tbody>"
+"   </table>"
+
+"   <div style=\"font-size:12px; font-weight:600; color:#888; text-transform:uppercase; letter-spacing:.05em; margin-bottom:8px;\">Bus State Flags</div>"
+"   <div style=\"display:flex; gap:10px; flex-wrap:wrap; padding-bottom:4px;\">"
+
+#define MCAN_FLAG_PILL(label, id_pill) \
+"       <div style=\"display:flex; align-items:center; gap:6px; background:#f5f5f5; border-radius:8px; padding:6px 12px; font-size:13px;\">" \
+"           <span id=\"" id_pill "_dot\" style=\"width:9px; height:9px; border-radius:50%; background:#ccc; display:inline-block;\"></span>" \
+"           <span>" label "</span>" \
+"           <span id=\"" id_pill "_val\" style=\"font-weight:600; color:#aaa;\">-</span>" \
+"       </div>"
+
+MCAN_FLAG_PILL("Error Passive", "mcan_ep")
+MCAN_FLAG_PILL("Rx Passive", "mcan_rp")
+MCAN_FLAG_PILL("Warning",       "mcan_warn")
+MCAN_FLAG_PILL("Bus-Off",       "mcan_boff")
+MCAN_FLAG_PILL("RESI",          "mcan_resi")
+MCAN_FLAG_PILL("RBRS",          "mcan_rbrs")
+MCAN_FLAG_PILL("RFDF",          "mcan_rfdf")
+MCAN_FLAG_PILL("PXE",           "mcan_pxe")
+
+#undef MCAN_FLAG_PILL
+
+"   </div>"
 "</div>";
 
 static const char page_iomap[] =

@@ -63,7 +63,7 @@
  */
 #define WEB_SERVER_TASK_STACK_SIZE     3072U
 
-#define MAX_HTML_SIZE 7166
+#define MAX_HTML_SIZE 8192
 /* Extern */
 extern volatile ipc_data_t gSharedMem;
 extern const unsigned char gsp_favicon_ico[];
@@ -78,6 +78,8 @@ static uint8_t
 WEB_SERVER_taskStack_g[WEB_SERVER_TASK_STACK_SIZE] __attribute__((aligned(32), section(".threadstack"))) = {0};
 
 static char jsonBuf[MAX_HTML_SIZE];
+static char header[256];
+
 /*!
  *  \brief Application Web server task's object.
  */
@@ -85,8 +87,8 @@ static TaskP_Object WEB_SERVER_taskObj_g = { 0 };
 
 static int send_SVG(int fd, const char *svg_data, size_t svg_len)
 {
-    char header[256];
-
+    memset(header, 0, sizeof(header));
+    
     int hlen = snprintf(header,
                         sizeof(header),
                         "HTTP/1.1 200 OK\r\n"
@@ -442,92 +444,86 @@ static int WEB_SERVER_processGetAndRespond(int clientFd_p, const char *const pBu
         //     ret = send(clientFd_p, GespantLogo, GespantLogo_len, 0);
         // }
     }
-    else if ((strncmp(&pBuf_p[0], "/cpuLoad", 8) == 0))
+    else if (strncmp(&pBuf_p[0], "/cpuLoad", 8) == 0)
     {
-        // get request for cpuLoad
-        int snprintfRes = 0;
-        uint32_t lineValue = 0;
-        uint32_t textSize = 0;
-        uint32_t idIdle = -1;
-        CMN_CPU_API_SLoad_t idleLoad;
-
         memset(jsonBuf, 0, sizeof(jsonBuf));
+        int textSize = 0;
+        int remaining = (int)sizeof(jsonBuf);
+        int n;
 
-        for (int i = 0; i < data->tasksNum + 1; i++)
+    #define JAPPEND(...) \
+        do { \
+            n = snprintf(&jsonBuf[textSize], (size_t)remaining, __VA_ARGS__); \
+            if (n > 0 && n < remaining) { textSize += n; remaining -= n; } \
+        } while(0)
+
+        /* ── Move IDLE task to index 0 ───────────────────────────── */
+        int idIdle = -1;
+        for (int i = 0; i < data->tasksNum; i++)
         {
             if (strncmp(data->tasks[i].name, "IDLE", 32) == 0)
             {
-                idleLoad.cpuLoad    = data->tasks[i].cpuLoad;
-                idleLoad.exists     = data->tasks[i].exists;
-                idleLoad.taskHandle = data->tasks[i].taskHandle;
-
-                memcpy(idleLoad.name, data->tasks[i].name, 32);
-
                 idIdle = i;
                 break;
             }
         }
 
-        if (idIdle != -1)
+        if (idIdle > 0)
         {
-            data->tasks[idIdle].cpuLoad    = data->tasks[0].cpuLoad;
-            data->tasks[idIdle].exists     = data->tasks[0].exists;
-            data->tasks[idIdle].taskHandle = data->tasks[0].taskHandle;
-
-            memcpy(data->tasks[idIdle].name, data->tasks[0].name, 32);
-
-            data->tasks[0].cpuLoad    = idleLoad.cpuLoad;
-            data->tasks[0].exists     = idleLoad.exists;
-            data->tasks[0].taskHandle = idleLoad.taskHandle;
-
-            memcpy(data->tasks[0].name, idleLoad.name, 32);
+            CMN_CPU_API_SLoad_t tmp = data->tasks[0];
+            data->tasks[0]          = data->tasks[idIdle];
+            data->tasks[idIdle]     = tmp;
         }
 
-        for (int i = 0; i < data->tasksNum + 1; i++)
+        /* ── CPU: aggregate + per-task rows ──────────────────────── */
+        JAPPEND("%s,%2d.%02d %%\n",
+                data->cpu.name,
+                data->cpu.cpuLoad / 100,
+                data->cpu.cpuLoad % 100);
+
+        for (int i = 0; i < data->tasksNum; i++)
         {
-            if (i == 0)
-            {
-                snprintfRes = snprintf(&jsonBuf[textSize], 33, "%s", data->cpu.name);
-                textSize += snprintfRes;
-                textSize++;
-
-                snprintfRes = snprintf(&jsonBuf[textSize], 2, "%s", ",");
-                textSize += snprintfRes;
-
-                lineValue   = data->cpu.cpuLoad;
-                snprintfRes = snprintf(&jsonBuf[textSize], 8, "%2d.%2d %%", \
-                                       lineValue / 100, lineValue % 100);
-                textSize += snprintfRes;
-                textSize++;
-
-                snprintfRes = snprintf(&jsonBuf[textSize], 2, "%s", ",");
-                textSize += snprintfRes;
-                textSize++;
-            }
-            else
-            {
-                snprintfRes = snprintf(&jsonBuf[textSize], 33, "%s", data->tasks[i - 1].name);
-                textSize += snprintfRes;
-                textSize++;
-
-                snprintfRes = snprintf(&jsonBuf[textSize], 2, "%s", ",");
-                textSize += snprintfRes;
-
-                lineValue   = data->tasks[i-1].cpuLoad;
-                snprintfRes = snprintf(&jsonBuf[textSize], 8, "%2d.%2d %%", \
-                                       lineValue / 100, lineValue % 100);
-                textSize += snprintfRes;
-                textSize++;
-
-                snprintfRes = snprintf(&jsonBuf[textSize], 2, "%s", ",");
-                textSize += snprintfRes;
-                textSize++;
-            }
+            JAPPEND("%s,%2d.%02d %%\n",
+                    data->tasks[i].name,
+                    data->tasks[i].cpuLoad / 100,
+                    data->tasks[i].cpuLoad % 100);
         }
+
+        /* ── MCAN stats separator + error counters ───────────────── */
+        app_ipc_sharemem_lock();
+        const core_mcan_stats_t *mcan = &gSharedMem.ipc_sys.core0_mcan;
+        app_ipc_sharemem_unlock();
+
+        JAPPEND("---MCAN---\n");
+
+        /* Error counter block */
+        JAPPEND("REC,%lu\n",  (unsigned long)mcan->recErrCnt);
+        JAPPEND("TEC,%lu\n",  (unsigned long)mcan->transErrLogCnt);
+        JAPPEND("CEL,%lu\n",  (unsigned long)mcan->canErrLogCnt);
+        JAPPEND("RP,%lu\n",   (unsigned long)mcan->rpStatus);
+
+        /* Protocol status block */
+        JAPPEND("CPU,%lu\n",  (unsigned long)mcan->cpu_load);
+        JAPPEND("HB,%lu\n",  (unsigned long)mcan->heartbeat);
+        JAPPEND("LEC,%lu\n",  (unsigned long)mcan->ProtocolStatus_lastErrCode);
+        JAPPEND("ACT,%lu\n",  (unsigned long)mcan->ProtocolStatus_act);
+        JAPPEND("DLEC,%lu\n", (unsigned long)mcan->ProtocolStatus_dlec);
+        JAPPEND("TDCV,%lu\n", (unsigned long)mcan->ProtocolStatus_tdcv);
+
+        /* Bus state flags */
+        JAPPEND("EP,%lu\n",   (unsigned long)mcan->ProtocolStatus_errPassive);
+        JAPPEND("WARN,%lu\n", (unsigned long)mcan->ProtocolStatus_warningStatus);
+        JAPPEND("BOFF,%lu\n", (unsigned long)mcan->ProtocolStatus_busOffStatus);
+        JAPPEND("RESI,%lu\n", (unsigned long)mcan->ProtocolStatus_resi);
+        JAPPEND("RBRS,%lu\n", (unsigned long)mcan->ProtocolStatus_rbrs);
+        JAPPEND("RFDF,%lu\n", (unsigned long)mcan->ProtocolStatus_rfdf);
+        JAPPEND("PXE,%lu\n",  (unsigned long)mcan->ProtocolStatus_pxe);
+
+    #undef JAPPEND
 
         if (textSize > 0)
         {
-            ret = send(clientFd_p, jsonBuf, textSize, 0);
+            ret = send(clientFd_p, jsonBuf, (size_t)textSize, 0);
         }
     }
     else if ((strncmp(&pBuf_p[0], "/io-data", 8) == 0))
@@ -542,7 +538,7 @@ static int WEB_SERVER_processGetAndRespond(int clientFd_p, const char *const pBu
     }
     else if ((strncmp(&pBuf_p[0], "/io-json", 8) == 0))
     {
-        char header[256];
+        memset(header, 0, sizeof(header));
         // DebugP_log("Handle /io-data-json\r\n");
         memset(jsonBuf, 0, sizeof(jsonBuf));
         int len = generate_io_json(jsonBuf, MAX_HTML_SIZE, (IOCoupler_Device *)&gSharedMem.IOCoupler_Devices);
@@ -568,7 +564,6 @@ static int WEB_SERVER_processGetAndRespond(int clientFd_p, const char *const pBu
     }
     else if ((strncmp(&pBuf_p[0], "/api/scan/status", 16) == 0))
     {
-        char header[256];
         char body[128];
         int bodyLen = 0;
         int hLen    = 0;
@@ -594,6 +589,7 @@ static int WEB_SERVER_processGetAndRespond(int clientFd_p, const char *const pBu
                 break;
         }
 
+        memset(header, 0, sizeof(header));
         hLen = snprintf(
             header,
             sizeof(header),
@@ -628,7 +624,6 @@ static int WEB_SERVER_processPostAndRespond(int clientFd_p, const char *const pB
     // Ensure the request target starts with your API path
     if ((strncmp(&pBuf_p[0], "/api/scan", 9) == 0))
     {   
-        char header[256];
         char resp[128]; // Increased size slightly to safely prevent any buffer clipping
         int len;
 
@@ -655,6 +650,7 @@ static int WEB_SERVER_processPostAndRespond(int clientFd_p, const char *const pB
 
         len = strlen(resp);
 
+        memset(header, 0, sizeof(header));
         int hlen = snprintf(
             header,
             sizeof(header),
