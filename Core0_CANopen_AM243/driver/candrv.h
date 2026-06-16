@@ -25,8 +25,8 @@
 #define APP_DEBUG_MCAN_TX          (0)
 #define APP_DEBUG_MCAN_RX          (0)
 
-#define REC_THRESHOLD           (5U)
-#define CEL_THRESHOLD           (5U)
+#define REC_THRESHOLD           (64U)
+#define CEL_THRESHOLD           (64U)
 
 /* Allocate Message RAM memory section to filter elements, buffers, FIFO */
 /* Maximum STD Filter Element can be configured is 128 */

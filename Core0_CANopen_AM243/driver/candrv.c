@@ -59,6 +59,7 @@
 #include "ti_board_open_close.h"
 
 #include "candrv.h"
+#include "ipc_shareMem.h"
 
 #define MCAN_RX_QUEUE_LENGTH    1000
 #define MCAN_RX_ITEM_SIZE       sizeof( Message )
@@ -82,6 +83,7 @@ volatile Bool can_lock = 0;
 
 uint8_t McanRxQueueData[ MCAN_RX_QUEUE_LENGTH * MCAN_RX_ITEM_SIZE ];
 
+extern volatile ipc_data_t gSharedMem;
 
 #if APP_MCAN_MODE == MCAN_MODE_INTERRUPT
 static void    App_mcanIntrISR(void *arg);
@@ -102,9 +104,15 @@ void canInit(void){
 
     /* Construct Tx/Rx Semaphore objects */
     status = SemaphoreP_constructBinary(&gMcanTxDoneSem, 0);
-    DebugP_assert(SystemP_SUCCESS == status);
-    status = SemaphoreP_constructBinary(&gMcanRxDoneSem, 0);
-    DebugP_assert(SystemP_SUCCESS == status);
+    // DebugP_assert(SystemP_SUCCESS == status);
+    status |= SemaphoreP_constructBinary(&gMcanRxDoneSem, 0);
+    // DebugP_assert(SystemP_SUCCESS == status);
+
+    if(status != SystemP_SUCCESS){
+        app_ipc_sharemem_lock();
+        gSharedMem.ipc_sys.core0_mcan.last_error_type = ERR_TASK_CAN_INIT_SEMAPHORE;
+        app_ipc_sharemem_unlock();
+    }
 
     /* Assign MCAN instance address */
     gMcanBaseAddr = (uint32_t) AddrTranslateP_getLocalAddr(APP_MCAN_BASE_ADDR);
@@ -113,7 +121,13 @@ void canInit(void){
                                  MCAN_RX_ITEM_SIZE,
                                  McanRxQueueData,
                                  &McanRx_xStaticQueue );
-	configASSERT( xMcanRxQueue );
+	// configASSERT( xMcanRxQueue );
+
+    if(!xMcanRxQueue){
+        app_ipc_sharemem_lock();
+        gSharedMem.ipc_sys.core0_mcan.last_error_type = ERR_TASK_CAN_INIT_QUEUE;
+        app_ipc_sharemem_unlock();
+    }
     
     /* Configure MCAN module */
     App_mcanConfig();
@@ -195,14 +209,24 @@ int canSend(CAN_PORT port, Message *m)
         /* Enable Transmission interrupt for the selected buf num,
          * If FIFO is used, then need to send FIFO start index until FIFO count */
         status = MCAN_txBufTransIntrEnable(gMcanBaseAddr, bufNum, (uint32_t)TRUE);
-        DebugP_assert(status == CSL_PASS);
+        // DebugP_assert(status == CSL_PASS);
+        if(status != CSL_PASS){
+            app_ipc_sharemem_lock();
+            gSharedMem.ipc_sys.core0_mcan.last_error_type = ERR_TASK_CAN_TX_INTERUPT;
+            app_ipc_sharemem_unlock();
+        }
 
         /* Write message to Msg RAM */
         MCAN_writeMsgRam(gMcanBaseAddr, MCAN_MEM_TYPE_BUF, bufNum, &txMsg);
 
         /* Add request for transmission, This function will trigger transmission */
         status = MCAN_txBufAddReq(gMcanBaseAddr, bufNum);
-        DebugP_assert(status == CSL_PASS);
+        // DebugP_assert(status == CSL_PASS);
+        if(status != CSL_PASS){
+            app_ipc_sharemem_lock();
+            gSharedMem.ipc_sys.core0_mcan.last_error_type = ERR_TASK_CAN_TX_BUFF;
+            app_ipc_sharemem_unlock();
+        }
 
         /* Wait for Tx completion */
         SemaphoreP_pend(&gMcanTxDoneSem, SystemP_WAIT_FOREVER);
@@ -215,7 +239,20 @@ int canSend(CAN_PORT port, Message *m)
              (MCAN_ERR_CODE_NO_CHANGE != protStatus.dlec)) &&
             (0U != protStatus.pxe))
         {
-             DebugP_assert(FALSE);
+            // DebugP_assert(FALSE);
+            app_ipc_sharemem_lock();
+            gSharedMem.ipc_sys.core0_mcan.last_error_type = ERR_TASK_CAN_TX_BUS;
+            gSharedMem.ipc_sys.core0_mcan.ProtocolStatus_lastErrCode = protStatus.lastErrCode;
+            gSharedMem.ipc_sys.core0_mcan.ProtocolStatus_act = protStatus.act;
+            gSharedMem.ipc_sys.core0_mcan.ProtocolStatus_errPassive = protStatus.errPassive;
+            gSharedMem.ipc_sys.core0_mcan.ProtocolStatus_warningStatus = protStatus.warningStatus;
+            gSharedMem.ipc_sys.core0_mcan.ProtocolStatus_busOffStatus = protStatus.busOffStatus;
+            gSharedMem.ipc_sys.core0_mcan.ProtocolStatus_resi = protStatus.resi;
+            gSharedMem.ipc_sys.core0_mcan.ProtocolStatus_rbrs = protStatus.rbrs;
+            gSharedMem.ipc_sys.core0_mcan.ProtocolStatus_rfdf = protStatus.rfdf;
+            gSharedMem.ipc_sys.core0_mcan.ProtocolStatus_pxe = protStatus.pxe;
+            gSharedMem.ipc_sys.core0_mcan.ProtocolStatus_tdcv = protStatus.tdcv;
+            app_ipc_sharemem_unlock();
         }
 #endif
     can_lock = 0;
@@ -312,9 +349,17 @@ void canRecv_Task(void *args)
                         errCounter.recErrCnt,
                         errCounter.transErrLogCnt,
                         errCounter.canErrLogCnt);
+
+            app_ipc_sharemem_lock();
+            gSharedMem.ipc_sys.core0_mcan.last_error_type = ERR_TASK_CAN_RX_BUS;
+            gSharedMem.ipc_sys.core0_mcan.transErrLogCnt = errCounter.transErrLogCnt;
+            gSharedMem.ipc_sys.core0_mcan.recErrCnt = errCounter.recErrCnt;
+            gSharedMem.ipc_sys.core0_mcan.rpStatus = errCounter.rpStatus;
+            gSharedMem.ipc_sys.core0_mcan.canErrLogCnt = errCounter.canErrLogCnt;
+            app_ipc_sharemem_unlock();
         }
-        DebugP_assert((0U == errCounter.recErrCnt) &&
-                      (0U == errCounter.canErrLogCnt));
+        // DebugP_assert((0U == errCounter.recErrCnt) &&
+        //               (0U == errCounter.canErrLogCnt));
 
         /* =========================================================
         * FIFO0 RECEIVE
@@ -459,6 +504,10 @@ static void App_mcanConfig()
     MCAN_MsgRAMConfigParams    msgRAMConfigParams = {0U};
     MCAN_BitTimingParams       bitTimes = {0U};
 
+    app_ipc_sharemem_lock();
+    gSharedMem.ipc_sys.core0_mcan.last_error_type = ERR_TASK_CAN_INIT_CONFIG;
+    app_ipc_sharemem_unlock();
+
     /* Initialize MCAN module initParams */
     MCAN_initOperModeParams(&initParams);
     /* CAN FD Mode and Bit Rate Switch Enabled */
@@ -539,6 +588,10 @@ static void App_mcanConfig()
     while (MCAN_OPERATION_MODE_NORMAL != MCAN_getOpMode(gMcanBaseAddr))
     {}
 
+    app_ipc_sharemem_lock();
+    gSharedMem.ipc_sys.core0_mcan.last_error_type = ERR_TASK_NONE;
+    app_ipc_sharemem_unlock();
+
 #if APP_MCAN_MODE == MCAN_MODE_INTERRUPT
     canIntcfg();
 
@@ -570,7 +623,13 @@ static void App_mcanInitMsgRamConfigParams(MCAN_MsgRAMConfigParams
     msgRAMConfigParams->rxFIFO1OpMode = MCAN_RX_FIFO_OPERATION_MODE_OVERWRITE;
 
     status = MCAN_calcMsgRamParamsStartAddr(msgRAMConfigParams);
-    DebugP_assert(status == CSL_PASS);
+    // DebugP_assert(status == CSL_PASS);
+
+    if(status != CSL_PASS){
+        app_ipc_sharemem_lock();
+        gSharedMem.ipc_sys.core0_mcan.last_error_type = ERR_TASK_CAN_INIT_PARAM_MSGRAM;
+        app_ipc_sharemem_unlock();
+    }
 
     return;
 }
@@ -584,7 +643,12 @@ static void canIntcfg(void){
     hwiPrms.intNum      = APP_MCAN_INTR_NUM;
     hwiPrms.callback    = &App_mcanIntrISR;
     status              = HwiP_construct(&gMcanHwiObject, &hwiPrms);
-    DebugP_assert(status == SystemP_SUCCESS);
+    // DebugP_assert(status == SystemP_SUCCESS);
+    if(status != SystemP_SUCCESS){
+        app_ipc_sharemem_lock();
+        gSharedMem.ipc_sys.core0_mcan.last_error_type = ERR_TASK_CAN_INIT_INTERRUPT;
+        app_ipc_sharemem_unlock();
+    }
 }
 
 static void App_mcanEnableIntr(void)

@@ -751,6 +751,9 @@ static void App_printCpuLoad()
 	const uint32_t cpuLoad = TaskP_loadGetTotalCpuLoad();
     TaskP_loadResetAll();
     DebugP_log("[MASTER] CPU load = %d %% \r\n", cpuLoad/100);
+	app_ipc_sharemem_lock();
+	gSharedMem.ipc_sys.core0_mcan.cpu_load = cpuLoad/100;
+	app_ipc_sharemem_unlock();
     return;
 }
 
@@ -1141,6 +1144,10 @@ void master_loop(void *args)
 	
 	while(1){		
 		App_printCpuLoad();
+
+		app_ipc_sharemem_lock();
+		gSharedMem.ipc_sys.core0_mcan.heartbeat++;
+		app_ipc_sharemem_unlock();
 
 		app_ipc_sharemem_lock();
 		sys_cmd = gSharedMem.ipc_sys.ws_cmd;

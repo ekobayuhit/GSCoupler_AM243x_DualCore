@@ -100,11 +100,6 @@ uart1.rxTrigLvl               = "1";
 uart1.useMcuDomainPeripherals = true;
 uart1.MCU_UART.$assign        = "MCU_USART0";
 
-const uart_v0_template  = scripting.addModule("/drivers/uart/v0/uart_v0_template", {}, false);
-const uart_v0_template1 = uart_v0_template.addInstance({}, false);
-uart_v0_template1.$name = "drivers_uart_v0_uart_v0_template0";
-uart1.child             = uart_v0_template1;
-
 ethernetip1.$name                                = "CONFIG_ETHERNETIP0";
 ethernetip1.phyAddr1                             = 15;
 ethernetip1.phyToMacInterfaceMode                = "RGMII";
@@ -129,8 +124,16 @@ ethernetip1.icss                         = pruicss1;
 pruicss1.$name                           = "CONFIG_PRU_ICSS1";
 pruicss1.AdditionalICSSSettings[0].$name = "CONFIG_PRU_ICSS_IO0";
 
-debug_log.enableCssLog = false;
-debug_log.enableMemLog = true;
+debug_log.enableCssLog  = false;
+debug_log.enableMemLog  = true;
+debug_log.enableUartLog = true;
+debug_log.uartLog.$name = "CONFIG_UART0";
+
+const uart_v0_template  = scripting.addModule("/drivers/uart/v0/uart_v0_template", {}, false);
+const uart_v0_template1 = uart_v0_template.addInstance({}, false);
+uart_v0_template1.$name = "drivers_uart_v0_uart_v0_template0";
+uart1.child             = uart_v0_template1;
+debug_log.uartLog.child = uart_v0_template1;
 
 mpu_armv71.$name        = "CONFIG_MPU_REGION0";
 mpu_armv71.size         = 31;
@@ -186,8 +189,8 @@ region1.memory_region[3].manualStartAddress  = 0x70060000;
 region1.memory_region[3].size                = 0x8000;
 region1.memory_region[4].$name               = "MSRAM";
 region1.memory_region[4].auto                = false;
-region1.memory_region[4].manualStartAddress  = 0x700C9000;
-region1.memory_region[4].size                = 0x107000;
+region1.memory_region[4].size                = 0x107400;
+region1.memory_region[4].manualStartAddress  = 0x700C8400;
 region1.memory_region[5].type                = "FLASH";
 region1.memory_region[5].$name               = "FLASH";
 region1.memory_region[5].auto                = false;
@@ -423,3 +426,6 @@ ethernetip1.PRU_ICSSG1_RGMII2.TD2.$suggestSolution        = "PRG1_PRU0_GPO13";
 ethernetip1.PRU_ICSSG1_RGMII2.TD3.$suggestSolution        = "PRG1_PRU0_GPO14";
 ethernetip1.PRU_ICSSG1_RGMII2.TXC.$suggestSolution        = "PRG1_PRU0_GPO16";
 ethernetip1.PRU_ICSSG1_RGMII2.TX_CTL.$suggestSolution     = "PRG1_PRU0_GPO15";
+debug_log.uartLog.UART.$suggestSolution                   = "USART0";
+debug_log.uartLog.UART.RXD.$suggestSolution               = "UART0_RXD";
+debug_log.uartLog.UART.TXD.$suggestSolution               = "UART0_TXD";

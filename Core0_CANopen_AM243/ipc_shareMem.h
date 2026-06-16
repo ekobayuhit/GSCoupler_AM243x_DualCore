@@ -158,8 +158,19 @@ typedef struct {
 /** IPC Data Structure */
  typedef enum {
     ERR_TASK_NONE,
-    ERR_TASK_CAN_TX,
-    ERR_TASK_CAN_RX,
+    
+    /* CAN */
+    ERR_TASK_CAN_INIT_SEMAPHORE,
+    ERR_TASK_CAN_INIT_QUEUE,
+    ERR_TASK_CAN_INIT_CONFIG,
+    ERR_TASK_CAN_INIT_INTERRUPT,
+    ERR_TASK_CAN_INIT_PARAM_MSGRAM,
+    ERR_TASK_CAN_TX_BUS,
+    ERR_TASK_CAN_TX_INTERUPT,
+    ERR_TASK_CAN_TX_BUFF,
+    ERR_TASK_CAN_RX_BUS,
+    
+    /* INDUSTRIAL COMM */
     ERR_TASK_INDS_COMM,
 } task_err_type_t;
 
@@ -171,34 +182,68 @@ typedef enum {
 } ws_cmd_t;
 
 typedef struct {
+    uint32_t heartbeat;          // Should be 0 when core is running
+    uint32_t cpu_load;           // CPU Load percentage 
+    uint32_t cycle_count_max;    
+    uint32_t cycle_count_curr;   
+    uint32_t task_switches;      
+    task_err_type_t last_error_type;
+    uint32_t last_error_code;   
+    
+    /* MCAN_ErrCntStatus */
+    uint32_t transErrLogCnt;
+    uint32_t recErrCnt;
+    uint32_t rpStatus;
+    uint32_t canErrLogCnt;
+    
+    /* MCAN_ProtocolStatus */
+    uint32_t ProtocolStatus_lastErrCode;
+    uint32_t ProtocolStatus_act;
+    uint32_t ProtocolStatus_errPassive;
+    uint32_t ProtocolStatus_warningStatus;
+    uint32_t ProtocolStatus_busOffStatus;
+    uint32_t ProtocolStatus_dlec;
+    uint32_t ProtocolStatus_resi;
+    uint32_t ProtocolStatus_rbrs;
+    uint32_t ProtocolStatus_rfdf;
+    uint32_t ProtocolStatus_pxe;
+    uint32_t ProtocolStatus_tdcv;
+} core_mcan_stats_t;
+
+typedef struct {
     uint32_t heartbeat;
     uint32_t cpu_load;           // CPU Load percentage 
     uint32_t cycle_count_max;    
     uint32_t cycle_count_curr;   
     uint32_t task_switches;      
     task_err_type_t last_error_type;
-    uint32_t last_error_code;    
-} core_stats_t; // Size: 28 bytes
+    uint32_t last_error_code;
+    uint32_t error_cnt;    
+} core_indcomm_stats_t; // Size: 32 bytes
 
 typedef struct {
-    uint8_t active_protocol;
-    uint8_t master_state;
-    uint8_t explicit_pad0;       // Aligns enum execution scope
-    uint8_t explicit_pad1;       // Aligns enum execution scope
-    
-    ws_cmd_t ws_cmd;             // enum is 4 bytes
-    WSScanStatus_t ws_scan_status; // enum is 4 bytes
-    
-    core_stats_t core0_stats;
-    core_stats_t core1_stats;
-    
-    uint8_t reserved[64];        
+    union {
+        struct {
+            uint8_t active_protocol;
+            uint8_t master_state;
+            uint8_t explicit_pad0;       // Aligns enum execution scope
+            uint8_t explicit_pad1;       // Aligns enum execution scope
+            
+            ws_cmd_t ws_cmd;             // enum is 4 bytes
+            WSScanStatus_t ws_scan_status; // enum is 4 bytes
+            
+            core_mcan_stats_t core0_mcan;
+            core_indcomm_stats_t core1_indcomm;
+        };
+        
+        uint8_t automated_ipc_system[512];   
+    };     
 } __attribute__((aligned(128))) ipc_system_t;
 
 typedef struct {
     union {
         struct {
-            ipc_system_t     ipc_sys;           //  128 Bytes
+            ipc_system_t     ipc_sys;           //  512 Bytes
             uint8_t          buff_in[1024];     // 1024 Bytes
             uint8_t          buff_out[1024];    // 1024 Bytes
             IOCoupler_Device IOCoupler_Devices; // 2688 Bytes

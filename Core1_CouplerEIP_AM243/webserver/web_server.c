@@ -63,7 +63,7 @@
  */
 #define WEB_SERVER_TASK_STACK_SIZE     3072U
 
-#define MAX_HTML_SIZE 8190
+#define MAX_HTML_SIZE 7166
 /* Extern */
 extern volatile ipc_data_t gSharedMem;
 extern const unsigned char gsp_favicon_ico[];
