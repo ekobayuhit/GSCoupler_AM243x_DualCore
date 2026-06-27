@@ -48,6 +48,9 @@
         <GroupType>GP-EtherCAT</GroupType>
 
         <Profile>
+          <ChannelInfo>
+						<ProfileNo>5001</ProfileNo>
+					</ChannelInfo>
           <Dictionary>
             <DataTypes>
               <DataType><Name>BOOL</Name><BitSize>1</BitSize></DataType>
@@ -311,15 +314,98 @@
 
             <Objects>
               <!-- Standard CoE objects -->
-              <Object><Index>#x1000</Index><Name>Device type</Name><Type>UDINT</Type><BitSize>32</BitSize><Flags><Access>ro</Access></Flags></Object>
-              <Object><Index>#x1001</Index><Name>Error register</Name><Type>USINT</Type><BitSize>8</BitSize><Flags><Access>ro</Access></Flags></Object>
-              <Object><Index>#x1008</Index><Name>Device name</Name><Type>STRING(34)</Type><BitSize>272</BitSize><Flags><Access>ro</Access></Flags></Object>
-              <Object><Index>#x1009</Index><Name>Hardware version</Name><Type>STRING(3)</Type><BitSize>24</BitSize><Flags><Access>ro</Access></Flags></Object>
-              <Object><Index>#x100a</Index><Name>Software version</Name><Type>STRING(7)</Type><BitSize>56</BitSize><Flags><Access>ro</Access></Flags></Object>
-              <Object><Index>#x1018</Index><Name>Identity</Name><Type>DT1018</Type><BitSize>144</BitSize><Flags><Access>ro</Access></Flags></Object>
-              <Object><Index>#x10f1</Index><Name>Error Settings</Name><Type>DT10F1</Type><BitSize>64</BitSize><Flags><Access>ro</Access></Flags></Object>
-              <Object><Index>#x10f3</Index><Name>Diagnosis History</Name><Type>DT10F3</Type><BitSize>64</BitSize><Flags><Access>ro</Access></Flags></Object>
-              <Object><Index>#x10f8</Index><Name>Timestamp Object</Name><Type>ULINT</Type><BitSize>64</BitSize><Flags><Access>rw</Access><PdoMapping>T</PdoMapping></Flags></Object>
+              <Object>
+                <Index>#x1000</Index>
+                <Name>Device type</Name>
+                <Type>UDINT</Type>
+                <BitSize>32</BitSize>
+                <Info>
+                  <DefaultData>89130000</DefaultData>
+                </Info>
+                <Flags>
+                  <Access>ro</Access>
+                </Flags>
+              </Object>
+
+              <Object>
+                <Index>#x1001</Index>
+                <Name>Error register</Name>
+                <Type>USINT</Type>
+                <BitSize>8</BitSize>
+                <Flags>
+                  <Access>ro</Access>
+                </Flags>
+              </Object>
+
+              <Object><Index>#x1008</Index>
+                <Name>Device name</Name>
+                <Type>STRING(34)</Type>
+                <BitSize>272</BitSize>
+                <Flags>
+                  <Access>ro</Access>
+                </Flags>
+              </Object>
+              
+              <Object>
+                <Index>#x1009</Index>
+                <Name>Hardware version</Name>
+                <Type>STRING(3)</Type>
+                <BitSize>24</BitSize>
+                <Flags>
+                  <Access>ro</Access>
+                </Flags>
+              </Object>
+
+              <Object>
+                <Index>#x100a</Index>
+                <Name>Software version</Name>
+                <Type>STRING(7)</Type>
+                <BitSize>56</BitSize>
+                <Flags>
+                  <Access>ro</Access>
+                </Flags>
+              </Object>
+              
+              <Object>
+                <Index>#x1018</Index>
+                <Name>Identity</Name>
+                <Type>DT1018</Type>
+                <BitSize>144</BitSize>
+                <Flags>
+                  <Access>ro</Access>
+                </Flags>
+              </Object>
+              
+              <Object>
+                <Index>#x10f1</Index>
+                <Name>Error Settings</Name>
+                <Type>DT10F1</Type>
+                <BitSize>64</BitSize>
+                <Flags>
+                  <Access>ro</Access>
+                </Flags>
+              </Object>
+              
+              <Object>
+                <Index>#x10f3</Index>
+                <Name>Diagnosis History</Name>
+                <Type>DT10F3</Type>
+                <BitSize>64</BitSize>
+                <Flags>
+                  <Access>ro</Access>
+                </Flags>
+              </Object>
+              
+              <Object>
+                <Index>#x10f8</Index>
+                <Name>Timestamp Object</Name>
+                <Type>ULINT</Type>
+                <BitSize>64</BitSize>
+                <Flags>
+                  <Access>rw</Access>
+                  <PdoMapping>T</PdoMapping>
+                </Flags>
+              </Object>
 
               <!-- RxPDO mapping objects 1600h – 1613h (20 slots) -->
               <Object><Index>#x1600</Index><Name>RxPDO1</Name><Type>DT1600</Type><BitSize>264</BitSize><Flags><Access WriteRestrictions="PreOP">rw</Access></Flags></Object>

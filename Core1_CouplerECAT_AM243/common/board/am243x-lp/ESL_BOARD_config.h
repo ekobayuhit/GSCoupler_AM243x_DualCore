@@ -93,7 +93,7 @@
  #define ECAT_PRODUCTNAME_CTT               "TI EtherCAT Toolkit Conformance for AM243X.R5F"
  #define ECAT_PRODUCTNAME_CIA402            "TI EtherCAT Toolkit CiA402 for AM243X.R5F"
  #define ECAT_PRODUCTNAME_SIMPLE            "TI EtherCAT Toolkit for AM243X.R5F"
- #define ECAT_PRODUCTNAME_WEBSERVER         "TI EtherCAT Toolkit Webserver for AM243X.R5F"
+ #define ECAT_PRODUCTNAME_WEBSERVER         "GP-EtherCAT-Coupler"
  #define ECAT_REVISION_NO                   0x00010000
 
 #if (defined __cplusplus)

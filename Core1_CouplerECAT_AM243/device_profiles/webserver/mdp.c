@@ -696,9 +696,13 @@ static uint32_t MDP_SDO_Read(uint16_t index, uint8_t subindex,
         }
 
         if (index == OBJ_F050) {
+            OSAL_printf("MDP_SDO_Read: Detected list count=%u\r\n",
+                        (unsigned)g_mdp.detected_list.count);
             offset = 0;
             buf[offset++] = g_mdp.detected_list.count;
             for (i = 0; i < MAX_SLOTS; i++) {
+                OSAL_printf("MDP_SDO_Read: Detected list slot %u ident=0x%08X\r\n",
+                            (unsigned)i, g_mdp.detected_list.ident[i]);
                 uint32_t val = g_mdp.detected_list.ident[i];
                 memcpy(&buf[offset], &val, 4); offset += 4;
             }
@@ -1076,7 +1080,7 @@ static uint32_t MDP_SDO_Write(uint16_t index, uint8_t subindex,
 void MDP_OnEnterInit(void)
 {
     g_mdp.al_state       = AL_STATE_INIT;
-    g_mdp.al_status_code = AL_STATUS_NO_ERROR;
+    g_mdp.al_status_code = ALSTATUSCODE_NOERROR;
     g_mdp.total_input_bytes  = 0;
     g_mdp.total_output_bytes = 0;
     memset(&g_mdp.configured_list, 0, sizeof(g_mdp.configured_list));
