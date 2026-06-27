@@ -174,9 +174,48 @@
                    F050h : Module device profile
                    ============================================================ -->
 
-              <!-- F000h sub-record type: one entry per slot -->
+              <!-- F000h sub-record type: module list (detected modules) -->
               <DataType>
-                <Name>DTF000</Name><BitSize>656</BitSize>
+                <Name>DTF000</Name>
+                <BitSize>40</BitSize>
+                <SubItem>
+                    <SubIdx>0</SubIdx>
+                    <Name>SubIndex 000</Name>
+                    <Type>USINT</Type>
+                    <BitSize>8</BitSize>
+                    <BitOffs>0</BitOffs>
+                    <Flags>
+                        <Access>ro</Access>
+                        <Category>o</Category>
+                    </Flags>
+                </SubItem>
+                <SubItem>
+                    <SubIdx>1</SubIdx>
+                    <Name>Index distance</Name>
+                    <Type>UINT</Type>
+                    <BitSize>16</BitSize>
+                    <BitOffs>8</BitOffs>
+                    <Flags>
+                        <Access>ro</Access>
+                        <Category>o</Category>
+                    </Flags>
+                </SubItem>
+                <SubItem>
+                    <SubIdx>2</SubIdx>
+                    <Name>Maximum number of modules</Name>
+                    <Type>UINT</Type>
+                    <BitSize>16</BitSize>
+                    <BitOffs>24</BitOffs>
+                    <Flags>
+                        <Access>ro</Access>
+                        <Category>o</Category>
+                    </Flags>
+                </SubItem>
+            </DataType>
+
+              <!-- F050h sub-record type: one entry per slot -->
+              <DataType>
+                <Name>DTF050</Name><BitSize>656</BitSize>
                 <SubItem><SubIdx>0</SubIdx><Name>SubIndex 000</Name><Type>USINT</Type><BitSize>8</BitSize><BitOffs>0</BitOffs><Flags><Access>ro</Access></Flags></SubItem>
                 <!-- 20 slots × 16 bit = 320 bit + 8 bit header at offset 16 -->
                 <SubItem><SubIdx>1</SubIdx><Name>Module 1 Ident</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>16</BitOffs><Flags><Access>ro</Access></Flags></SubItem>
@@ -516,15 +555,28 @@
               <Object>
                 <Index>#xF000</Index>
                 <Name>Modular Device Profile</Name>
-                <Type>UINT</Type>
-                <BitSize>16</BitSize>
-                <Flags><Access>ro</Access></Flags>
-              </Object>
-              <Object>
-                <Index>#xF008</Index>
-                <Name>Code Word</Name>
-                <Type>UDINT</Type>
-                <BitSize>32</BitSize>
+                <Type>DTF000</Type>
+                <BitSize>40</BitSize>
+                <Info>
+                    <SubItem>
+                        <Name>SubIndex 000</Name>
+                        <Info>
+                            <DefaultData>02</DefaultData>   <!-- 2 subindices -->
+                        </Info>
+                    </SubItem>
+                    <SubItem>
+                        <Name>Index distance</Name>
+                        <Info>
+                            <DefaultData>1000</DefaultData> <!-- 0x0010 = 16 -->
+                        </Info>
+                    </SubItem>
+                    <SubItem>
+                        <Name>Maximum number of modules</Name>
+                        <Info>
+                            <DefaultData>1400</DefaultData> <!-- 0x0014 = 20 -->
+                        </Info>
+                    </SubItem>
+                </Info>
                 <Flags><Access>ro</Access></Flags>
               </Object>
               <Object>
@@ -544,7 +596,7 @@
               <Object>
                 <Index>#xF050</Index>
                 <Name>Detected Module Ident List</Name>
-                <Type>DTF000</Type>
+                <Type>DTF050</Type>
                 <BitSize>656</BitSize>
                 <Flags><Access>ro</Access></Flags>
               </Object>

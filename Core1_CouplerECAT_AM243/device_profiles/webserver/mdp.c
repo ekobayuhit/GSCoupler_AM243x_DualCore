@@ -295,14 +295,6 @@ void MDP_CreateObjects(void)
         EC_SLV_APP_MDP_SDO_Read, NULL, NULL, NULL);
 
     /* ------------------------------------------------------------------
-       0xF008 – Code Word
-       ------------------------------------------------------------------ */
-    EC_API_SLV_CoE_odAddVariable(
-        ptSubDevice, OBJ_F008, "Code Word",
-        DEFTYPE_UNSIGNED32, 32, ACCESS_READ,
-        EC_SLV_APP_MDP_SDO_Read, NULL, NULL, NULL);
-
-    /* ------------------------------------------------------------------
        0xF010 – Module Profile List
        ------------------------------------------------------------------ */
     error = (uint32_t)EC_API_SLV_CoE_odAddRecord(
@@ -676,13 +668,26 @@ static uint32_t MDP_SDO_Read(uint16_t index, uint8_t subindex,
         uint8_t  i;
 
         if (index == OBJ_F010) {
-            offset = 0;
-            buf[offset++] = MAX_SLOTS;
+            /* Count highest populated slot (SubIndex 0 = highest valid subindex) */
+            uint8_t num = 0;
             for (i = 0; i < MAX_SLOTS; i++) {
-                uint32_t val = 0;
-                memcpy(&buf[offset], &val, 4); offset += 4;
+                if (g_mdp.slot[i].configured) num = i + 1u;
             }
-            *size = offset; return 0;
+
+            uint32_t required = 1u + ((uint32_t)num * 4u);
+            if (*size < required) return 0x06070010u; /* buffer too small */
+
+            offset = 0;
+            buf[offset++] = num;                                      /* SubIndex 0: count */
+            for (i = 0; i < num; i++) {
+                uint32_t val = g_mdp.slot[i].configured
+                               ? g_mdp.configured_list.ident[i]
+                               : 0u;
+                memcpy(&buf[offset], &val, 4u);
+                offset += 4u;
+            }
+            *size = offset;
+            return 0u;
         }
 
         if (index == OBJ_F030) {
@@ -817,16 +822,26 @@ static uint32_t MDP_SDO_Read(uint16_t index, uint8_t subindex,
     /* =====================================================================
        Normal per-subindex path
        ===================================================================== */
-    if (index == OBJ_F000) {
-        if (subindex != 0) return 0x06090011u;
-        uint16_t val = 0x0001u;
-        memcpy(buf, &val, 2); *size = 2; return 0;
-    }
+    if (index == OBJ_F010) {
+        uint8_t num = 0;
+        for (uint8_t i = 0; i < MAX_SLOTS; i++) {
+            if (g_mdp.slot[i].configured) num = i + 1u;
+        }
 
-    if (index == OBJ_F008) {
-        if (subindex != 0) return 0x06090011u;
-        uint32_t val = 0;
-        memcpy(buf, &val, 4); *size = 4; return 0;
+        if (subindex == 0u) {
+            buf[0] = num;
+            *size  = 1u;
+            return 0u;
+        }
+        if (subindex <= num) {
+            uint32_t val = g_mdp.slot[subindex - 1u].configured
+                           ? g_mdp.configured_list.ident[subindex - 1u]
+                           : 0u;
+            memcpy(buf, &val, 4u);
+            *size = 4u;
+            return 0u;
+        }
+        return 0x06090011u; /* subindex does not exist */
     }
 
     if (index == OBJ_F010) {
@@ -1065,8 +1080,9 @@ static uint32_t MDP_SDO_Write(uint16_t index, uint8_t subindex,
     }
 
     /* Read-only objects */
-    if (index == OBJ_F000 || index == OBJ_F008 ||
-        index == OBJ_F010 || index == OBJ_F050)
+    if (index == OBJ_F000 ||
+        index == OBJ_F010 || 
+        index == OBJ_F050)
     {
         return 0x06010002u;  /* Write to read-only object */
     }
