@@ -1,0 +1,809 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  GP-EtherCAT-Coupler (ETG.2000 v1.17)
+-->
+<EtherCATInfo xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+              xsi:noNamespaceSchemaLocation="EtherCATInfo.xsd"
+              Version="1.17">
+
+  <Vendor>
+    <Id>#x0000059D</Id>
+    <Name>Gespant Technology Inc.</Name>
+    <ImageData16x14>424de6000000000000007600000028000000100000000e000000010004000000000070000000130b0000130b00001000000010000000ffffff00fffeff00fefefe00fefefd00fdfdfd00fdfdfc00fbfbfb00f4f4f400dfdfdf00bab9ba00939394006c6b6c004d4c4f00353537001c1b1e00060608000004250bfda80200000002289bed924000002460009fc1200005000000afc1300200089aacec7450204adedddded902027bfc970079dfa040afc40020008df900bfa07544660cf9009fd80000009ee8040aeeb9889bfd9040408adeeeeca704000400078870004000004600000262000</ImageData16x14>
+  </Vendor>
+
+  <Descriptions>
+    <Groups>
+      <Group SortOrder="-1">
+        <Type>GP-EtherCAT</Type>
+        <Name LcId="1033">GP-EtherCAT</Name>
+        <ImageData16x14>424de6000000000000007600000028000000100000000e000000010004000000000070000000130b0000130b00001000000010000000ffffff00fffeff00fefefe00fefefd00fdfdfd00fdfdfc00fbfbfb00f4f4f400dfdfdf00bab9ba00939394006c6b6c004d4c4f00353537001c1b1e00060608000004250bfda80200000002289bed924000002460009fc1200005000000afc1300200089aacec7450204adedddded902027bfc970079dfa040afc40020008df900bfa07544660cf9009fd80000009ee8040aeeb9889bfd9040408adeeeeca704000400078870004000004600000262000</ImageData16x14>
+      </Group>
+    </Groups>
+
+    <Devices>
+      <Device Physics="YY">
+        <Type ProductCode="#x54490027" RevisionNo="#x10000">GP-EtherCAT-Coupler</Type>
+        <Name LcId="1033">Gespant EtherCAT IO Coupler V0.3</Name>
+
+        <Info>
+          <Mailbox>
+            <Timeout>
+              <RequestTimeout>100</RequestTimeout>
+              <ResponseTimeout>1000</ResponseTimeout>
+            </Timeout>
+          </Mailbox>
+          <Port>
+            <Type>MII</Type>
+            <Label>"EtherCAT IN"</Label>
+            <PhysicalPhyAddr>15</PhysicalPhyAddr>
+          </Port>
+          <Port>
+            <Type>MII</Type>
+            <Label>"EtherCAT OUT"</Label>
+            <PhysicalPhyAddr>3</PhysicalPhyAddr>
+          </Port>
+        </Info>
+
+        <GroupType>GP-EtherCAT</GroupType>
+
+        <Profile>
+          <Dictionary>
+            <DataTypes>
+              <DataType><Name>BOOL</Name><BitSize>1</BitSize></DataType>
+              <DataType><Name>UDINT</Name><BitSize>32</BitSize></DataType>
+              <DataType><Name>UINT</Name><BitSize>16</BitSize></DataType>
+              <DataType><Name>INT</Name><BitSize>16</BitSize></DataType>
+              <DataType><Name>ULINT</Name><BitSize>64</BitSize></DataType>
+              <DataType><Name>USINT</Name><BitSize>8</BitSize></DataType>
+              <DataType><Name>STRING(3)</Name><BitSize>24</BitSize></DataType>
+              <DataType><Name>STRING(34)</Name><BitSize>272</BitSize></DataType>
+              <DataType><Name>STRING(7)</Name><BitSize>56</BitSize></DataType>
+
+              <!-- DT0800EN16: Connection state enum -->
+              <DataType>
+                <Name>DT0800EN16</Name><BaseType>UINT</BaseType><BitSize>16</BitSize>
+                <EnumInfo><Text>Reset</Text><Enum>100</Enum></EnumInfo>
+                <EnumInfo><Text>Session</Text><Enum>101</Enum></EnumInfo>
+                <EnumInfo><Text>Connection</Text><Enum>102</Enum></EnumInfo>
+                <EnumInfo><Text>Parameter</Text><Enum>103</Enum></EnumInfo>
+                <EnumInfo><Text>Data</Text><Enum>104</Enum></EnumInfo>
+                <EnumInfo><Text>FailSafe</Text><Enum>105</Enum></EnumInfo>
+              </DataType>
+
+              <!-- Identity object 1018h -->
+              <DataType>
+                <Name>DT1018</Name><BitSize>144</BitSize>
+                <SubItem><SubIdx>0</SubIdx><Name>SubIndex 000</Name><Type>USINT</Type><BitSize>8</BitSize><BitOffs>0</BitOffs><Flags><Access>ro</Access></Flags></SubItem>
+                <SubItem><SubIdx>1</SubIdx><Name>Vendor ID</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>16</BitOffs><Flags><Access>ro</Access></Flags></SubItem>
+                <SubItem><SubIdx>2</SubIdx><Name>Product code</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>48</BitOffs><Flags><Access>ro</Access></Flags></SubItem>
+                <SubItem><SubIdx>3</SubIdx><Name>Revision number</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>80</BitOffs><Flags><Access>ro</Access></Flags></SubItem>
+                <SubItem><SubIdx>4</SubIdx><Name>Serial number</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>112</BitOffs><Flags><Access>ro</Access></Flags></SubItem>
+              </DataType>
+
+              <!-- Error settings 10F1h -->
+              <DataType>
+                <Name>DT10F1</Name><BitSize>64</BitSize>
+                <SubItem><SubIdx>0</SubIdx><Name>SubIndex 000</Name><Type>USINT</Type><BitSize>8</BitSize><BitOffs>0</BitOffs><Flags><Access>ro</Access></Flags></SubItem>
+                <SubItem><SubIdx>1</SubIdx><Name>Local Error Reaction</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>16</BitOffs><Flags><Access>rw</Access></Flags></SubItem>
+                <SubItem><SubIdx>2</SubIdx><Name>Sync Error Counter Limit</Name><Type>UINT</Type><BitSize>16</BitSize><BitOffs>48</BitOffs><Flags><Access>rw</Access></Flags></SubItem>
+              </DataType>
+
+              <!-- Diagnosis history 10F3h -->
+              <DataType>
+                <Name>DT10F3</Name><BitSize>64</BitSize>
+                <SubItem><SubIdx>0</SubIdx><Name>SubIndex 000</Name><Type>USINT</Type><BitSize>8</BitSize><BitOffs>0</BitOffs><Flags><Access>ro</Access></Flags></SubItem>
+                <SubItem><SubIdx>1</SubIdx><Name>Maximum Messages</Name><Type>USINT</Type><BitSize>8</BitSize><BitOffs>16</BitOffs><Flags><Access>ro</Access></Flags></SubItem>
+                <SubItem><SubIdx>2</SubIdx><Name>Newest Message</Name><Type>USINT</Type><BitSize>8</BitSize><BitOffs>24</BitOffs><Flags><Access>ro</Access></Flags></SubItem>
+                <SubItem><SubIdx>3</SubIdx><Name>Newest Acknowledged Message</Name><Type>USINT</Type><BitSize>8</BitSize><BitOffs>32</BitOffs><Flags><Access>rw</Access></Flags></SubItem>
+                <SubItem><SubIdx>4</SubIdx><Name>New Messages Available</Name><Type>BOOL</Type><BitSize>1</BitSize><BitOffs>40</BitOffs><Flags><Access>ro</Access><PdoMapping>T</PdoMapping></Flags></SubItem>
+                <SubItem><SubIdx>5</SubIdx><Name>Flags</Name><Type>UINT</Type><BitSize>16</BitSize><BitOffs>48</BitOffs><Flags><Access>rw</Access></Flags></SubItem>
+              </DataType>
+
+              <!-- PDO mapping record type (used by 1600h-1613h and 1A00h-1A13h) -->
+              <DataType>
+                <Name>DT1600</Name><BitSize>264</BitSize>
+                <SubItem><SubIdx>0</SubIdx><Name>Max SubIndex</Name><Type>USINT</Type><BitSize>8</BitSize><BitOffs>0</BitOffs><Flags><Access WriteRestrictions="PreOP">rw</Access></Flags></SubItem>
+                <SubItem><SubIdx>1</SubIdx><Name>PDO Mapping 1</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>8</BitOffs><Flags><Access WriteRestrictions="PreOP">rw</Access></Flags></SubItem>
+                <SubItem><SubIdx>2</SubIdx><Name>PDO Mapping 2</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>40</BitOffs><Flags><Access WriteRestrictions="PreOP">rw</Access></Flags></SubItem>
+                <SubItem><SubIdx>3</SubIdx><Name>PDO Mapping 3</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>72</BitOffs><Flags><Access WriteRestrictions="PreOP">rw</Access></Flags></SubItem>
+                <SubItem><SubIdx>4</SubIdx><Name>PDO Mapping 4</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>104</BitOffs><Flags><Access WriteRestrictions="PreOP">rw</Access></Flags></SubItem>
+                <SubItem><SubIdx>5</SubIdx><Name>PDO Mapping 5</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>136</BitOffs><Flags><Access WriteRestrictions="PreOP">rw</Access></Flags></SubItem>
+                <SubItem><SubIdx>6</SubIdx><Name>PDO Mapping 6</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>168</BitOffs><Flags><Access WriteRestrictions="PreOP">rw</Access></Flags></SubItem>
+                <SubItem><SubIdx>7</SubIdx><Name>PDO Mapping 7</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>200</BitOffs><Flags><Access WriteRestrictions="PreOP">rw</Access></Flags></SubItem>
+                <SubItem><SubIdx>8</SubIdx><Name>PDO Mapping 8</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>232</BitOffs><Flags><Access WriteRestrictions="PreOP">rw</Access></Flags></SubItem>
+              </DataType>
+
+              <!-- SM channel type arrays for 1C00h -->
+              <DataType>
+                <Name>DT1C00ARR</Name><BaseType>USINT</BaseType><BitSize>32</BitSize>
+                <ArrayInfo><LBound>1</LBound><Elements>4</Elements></ArrayInfo>
+              </DataType>
+              <DataType>
+                <Name>DT1C00</Name><BitSize>48</BitSize>
+                <SubItem><SubIdx>0</SubIdx><Name>SubIndex 000</Name><Type>USINT</Type><BitSize>8</BitSize><BitOffs>0</BitOffs><Flags><Access>ro</Access></Flags></SubItem>
+                <SubItem><Name>Elements</Name><Type>DT1C00ARR</Type><BitSize>32</BitSize><BitOffs>16</BitOffs><Flags><Access>ro</Access></Flags></SubItem>
+              </DataType>
+
+              <!-- RxPDO assign array type -->
+              <DataType>
+                <Name>DT1C12ARR</Name><BaseType>UINT</BaseType><BitSize>32</BitSize>
+                <ArrayInfo><LBound>1</LBound><Elements>2</Elements></ArrayInfo>
+              </DataType>
+              <DataType>
+                <Name>DT1C12</Name><BitSize>48</BitSize>
+                <SubItem><SubIdx>0</SubIdx><Name>SubIndex 000</Name><Type>USINT</Type><BitSize>8</BitSize><BitOffs>0</BitOffs><Flags><Access>ro</Access></Flags></SubItem>
+                <SubItem><Name>Elements</Name><Type>DT1C12ARR</Type><BitSize>32</BitSize><BitOffs>16</BitOffs><Flags><Access>ro</Access></Flags></SubItem>
+              </DataType>
+
+              <!-- TxPDO assign array type -->
+              <DataType>
+                <Name>DT1C13ARR</Name><BaseType>UINT</BaseType><BitSize>32</BitSize>
+                <ArrayInfo><LBound>1</LBound><Elements>2</Elements></ArrayInfo>
+              </DataType>
+              <DataType>
+                <Name>DT1C13</Name><BitSize>48</BitSize>
+                <SubItem><SubIdx>0</SubIdx><Name>SubIndex 000</Name><Type>USINT</Type><BitSize>8</BitSize><BitOffs>0</BitOffs><Flags><Access>ro</Access></Flags></SubItem>
+                <SubItem><Name>Elements</Name><Type>DT1C13ARR</Type><BitSize>32</BitSize><BitOffs>16</BitOffs><Flags><Access>ro</Access></Flags></SubItem>
+              </DataType>
+
+              <!-- SM sync parameter type -->
+              <DataType>
+                <Name>DT1C32</Name><BitSize>488</BitSize>
+                <SubItem><SubIdx>0</SubIdx><Name>SubIndex 000</Name><Type>USINT</Type><BitSize>8</BitSize><BitOffs>0</BitOffs><Flags><Access>ro</Access></Flags></SubItem>
+                <SubItem><SubIdx>1</SubIdx><Name>Synchronization Type</Name><Type>UINT</Type><BitSize>16</BitSize><BitOffs>16</BitOffs><Flags><Access WriteRestrictions="PreOP">rw</Access></Flags></SubItem>
+                <SubItem><SubIdx>2</SubIdx><Name>Cycle Time</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>32</BitOffs><Flags><Access>ro</Access></Flags></SubItem>
+                <SubItem><SubIdx>4</SubIdx><Name>Synchronization Types supported</Name><Type>UINT</Type><BitSize>16</BitSize><BitOffs>96</BitOffs><Flags><Access>ro</Access></Flags></SubItem>
+                <SubItem><SubIdx>5</SubIdx><Name>Minimum Cycle Time</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>112</BitOffs><Flags><Access>ro</Access></Flags></SubItem>
+                <SubItem><SubIdx>6</SubIdx><Name>Calc and Copy Time</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>144</BitOffs><Flags><Access>ro</Access></Flags></SubItem>
+                <SubItem><SubIdx>8</SubIdx><Name>Get Cycle Time</Name><Type>UINT</Type><BitSize>16</BitSize><BitOffs>208</BitOffs><Flags><Access>rw</Access></Flags></SubItem>
+                <SubItem><SubIdx>9</SubIdx><Name>Delay Time</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>224</BitOffs><Flags><Access>ro</Access></Flags></SubItem>
+                <SubItem><SubIdx>10</SubIdx><Name>Sync0 Cycle Time</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>256</BitOffs><Flags><Access>rw</Access></Flags></SubItem>
+                <SubItem><SubIdx>11</SubIdx><Name>SM-Event Missed</Name><Type>UINT</Type><BitSize>16</BitSize><BitOffs>288</BitOffs><Flags><Access>ro</Access></Flags></SubItem>
+                <SubItem><SubIdx>12</SubIdx><Name>Cycle Time Too Small</Name><Type>UINT</Type><BitSize>16</BitSize><BitOffs>304</BitOffs><Flags><Access>ro</Access></Flags></SubItem>
+                <SubItem><SubIdx>32</SubIdx><Name>Sync Error</Name><Type>BOOL</Type><BitSize>1</BitSize><BitOffs>480</BitOffs><Flags><Access>ro</Access></Flags></SubItem>
+              </DataType>
+
+              <!-- ============================================================
+                   Modular Device Profile (MDP) mandatory data types
+                   F000h : Module list (Detected Modules)
+                   F030h : Module PDO assignment list
+                   F050h : Module device profile
+                   ============================================================ -->
+
+              <!-- F000h sub-record type: one entry per slot -->
+              <DataType>
+                <Name>DTF000</Name><BitSize>656</BitSize>
+                <SubItem><SubIdx>0</SubIdx><Name>SubIndex 000</Name><Type>USINT</Type><BitSize>8</BitSize><BitOffs>0</BitOffs><Flags><Access>ro</Access></Flags></SubItem>
+                <!-- 20 slots × 16 bit = 320 bit + 8 bit header at offset 16 -->
+                <SubItem><SubIdx>1</SubIdx><Name>Module 1 Ident</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>16</BitOffs><Flags><Access>ro</Access></Flags></SubItem>
+                <SubItem><SubIdx>2</SubIdx><Name>Module 2 Ident</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>48</BitOffs><Flags><Access>ro</Access></Flags></SubItem>
+                <SubItem><SubIdx>3</SubIdx><Name>Module 3 Ident</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>80</BitOffs><Flags><Access>ro</Access></Flags></SubItem>
+                <SubItem><SubIdx>4</SubIdx><Name>Module 4 Ident</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>112</BitOffs><Flags><Access>ro</Access></Flags></SubItem>
+                <SubItem><SubIdx>5</SubIdx><Name>Module 5 Ident</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>144</BitOffs><Flags><Access>ro</Access></Flags></SubItem>
+                <SubItem><SubIdx>6</SubIdx><Name>Module 6 Ident</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>176</BitOffs><Flags><Access>ro</Access></Flags></SubItem>
+                <SubItem><SubIdx>7</SubIdx><Name>Module 7 Ident</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>208</BitOffs><Flags><Access>ro</Access></Flags></SubItem>
+                <SubItem><SubIdx>8</SubIdx><Name>Module 8 Ident</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>240</BitOffs><Flags><Access>ro</Access></Flags></SubItem>
+                <SubItem><SubIdx>9</SubIdx><Name>Module 9 Ident</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>272</BitOffs><Flags><Access>ro</Access></Flags></SubItem>
+                <SubItem><SubIdx>10</SubIdx><Name>Module 10 Ident</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>304</BitOffs><Flags><Access>ro</Access></Flags></SubItem>
+                <SubItem><SubIdx>11</SubIdx><Name>Module 11 Ident</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>336</BitOffs><Flags><Access>ro</Access></Flags></SubItem>
+                <SubItem><SubIdx>12</SubIdx><Name>Module 12 Ident</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>368</BitOffs><Flags><Access>ro</Access></Flags></SubItem>
+                <SubItem><SubIdx>13</SubIdx><Name>Module 13 Ident</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>400</BitOffs><Flags><Access>ro</Access></Flags></SubItem>
+                <SubItem><SubIdx>14</SubIdx><Name>Module 14 Ident</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>432</BitOffs><Flags><Access>ro</Access></Flags></SubItem>
+                <SubItem><SubIdx>15</SubIdx><Name>Module 15 Ident</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>464</BitOffs><Flags><Access>ro</Access></Flags></SubItem>
+                <SubItem><SubIdx>16</SubIdx><Name>Module 16 Ident</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>496</BitOffs><Flags><Access>ro</Access></Flags></SubItem>
+                <SubItem><SubIdx>17</SubIdx><Name>Module 17 Ident</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>528</BitOffs><Flags><Access>ro</Access></Flags></SubItem>
+                <SubItem><SubIdx>18</SubIdx><Name>Module 18 Ident</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>560</BitOffs><Flags><Access>ro</Access></Flags></SubItem>
+                <SubItem><SubIdx>19</SubIdx><Name>Module 19 Ident</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>592</BitOffs><Flags><Access>ro</Access></Flags></SubItem>
+                <SubItem><SubIdx>20</SubIdx><Name>Module 20 Ident</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>624</BitOffs><Flags><Access>ro</Access></Flags></SubItem>
+              </DataType>
+
+              <!-- F030h sub-record type: configured module ident list (written by master) -->
+              <DataType>
+                <Name>DTF030</Name><BitSize>656</BitSize>
+                <SubItem><SubIdx>0</SubIdx><Name>SubIndex 000</Name><Type>USINT</Type><BitSize>8</BitSize><BitOffs>0</BitOffs><Flags><Access>rw</Access></Flags></SubItem>
+                <SubItem><SubIdx>1</SubIdx><Name>Module 1 Ident</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>16</BitOffs><Flags><Access>rw</Access></Flags></SubItem>
+                <SubItem><SubIdx>2</SubIdx><Name>Module 2 Ident</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>48</BitOffs><Flags><Access>rw</Access></Flags></SubItem>
+                <SubItem><SubIdx>3</SubIdx><Name>Module 3 Ident</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>80</BitOffs><Flags><Access>rw</Access></Flags></SubItem>
+                <SubItem><SubIdx>4</SubIdx><Name>Module 4 Ident</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>112</BitOffs><Flags><Access>rw</Access></Flags></SubItem>
+                <SubItem><SubIdx>5</SubIdx><Name>Module 5 Ident</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>144</BitOffs><Flags><Access>rw</Access></Flags></SubItem>
+                <SubItem><SubIdx>6</SubIdx><Name>Module 6 Ident</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>176</BitOffs><Flags><Access>rw</Access></Flags></SubItem>
+                <SubItem><SubIdx>7</SubIdx><Name>Module 7 Ident</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>208</BitOffs><Flags><Access>rw</Access></Flags></SubItem>
+                <SubItem><SubIdx>8</SubIdx><Name>Module 8 Ident</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>240</BitOffs><Flags><Access>rw</Access></Flags></SubItem>
+                <SubItem><SubIdx>9</SubIdx><Name>Module 9 Ident</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>272</BitOffs><Flags><Access>rw</Access></Flags></SubItem>
+                <SubItem><SubIdx>10</SubIdx><Name>Module 10 Ident</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>304</BitOffs><Flags><Access>rw</Access></Flags></SubItem>
+                <SubItem><SubIdx>11</SubIdx><Name>Module 11 Ident</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>336</BitOffs><Flags><Access>rw</Access></Flags></SubItem>
+                <SubItem><SubIdx>12</SubIdx><Name>Module 12 Ident</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>368</BitOffs><Flags><Access>rw</Access></Flags></SubItem>
+                <SubItem><SubIdx>13</SubIdx><Name>Module 13 Ident</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>400</BitOffs><Flags><Access>rw</Access></Flags></SubItem>
+                <SubItem><SubIdx>14</SubIdx><Name>Module 14 Ident</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>432</BitOffs><Flags><Access>rw</Access></Flags></SubItem>
+                <SubItem><SubIdx>15</SubIdx><Name>Module 15 Ident</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>464</BitOffs><Flags><Access>rw</Access></Flags></SubItem>
+                <SubItem><SubIdx>16</SubIdx><Name>Module 16 Ident</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>496</BitOffs><Flags><Access>rw</Access></Flags></SubItem>
+                <SubItem><SubIdx>17</SubIdx><Name>Module 17 Ident</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>528</BitOffs><Flags><Access>rw</Access></Flags></SubItem>
+                <SubItem><SubIdx>18</SubIdx><Name>Module 18 Ident</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>560</BitOffs><Flags><Access>rw</Access></Flags></SubItem>
+                <SubItem><SubIdx>19</SubIdx><Name>Module 19 Ident</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>592</BitOffs><Flags><Access>rw</Access></Flags></SubItem>
+                <SubItem><SubIdx>20</SubIdx><Name>Module 20 Ident</Name><Type>UDINT</Type><BitSize>32</BitSize><BitOffs>624</BitOffs><Flags><Access>rw</Access></Flags></SubItem>
+              </DataType>
+
+              <!-- 2200h data type: slot input data (TxPDO source) for ANALOG, 12 subindices max -->
+              <DataType>
+                <Name>DT2200</Name><BitSize>200</BitSize>
+                <SubItem><SubIdx>0</SubIdx><Name>SubIndex 000</Name><Type>USINT</Type><BitSize>8</BitSize><BitOffs>0</BitOffs><Flags><Access>ro</Access></Flags></SubItem>
+                <SubItem><SubIdx>1</SubIdx><Name>Ch1</Name><Type>INT</Type><BitSize>16</BitSize><BitOffs>8</BitOffs><Flags><Access>ro</Access><PdoMapping>T</PdoMapping></Flags></SubItem>
+                <SubItem><SubIdx>2</SubIdx><Name>Ch2</Name><Type>INT</Type><BitSize>16</BitSize><BitOffs>24</BitOffs><Flags><Access>ro</Access><PdoMapping>T</PdoMapping></Flags></SubItem>
+                <SubItem><SubIdx>3</SubIdx><Name>Ch3</Name><Type>INT</Type><BitSize>16</BitSize><BitOffs>40</BitOffs><Flags><Access>ro</Access><PdoMapping>T</PdoMapping></Flags></SubItem>
+                <SubItem><SubIdx>4</SubIdx><Name>Ch4</Name><Type>INT</Type><BitSize>16</BitSize><BitOffs>56</BitOffs><Flags><Access>ro</Access><PdoMapping>T</PdoMapping></Flags></SubItem>
+                <SubItem><SubIdx>5</SubIdx><Name>Ch5</Name><Type>INT</Type><BitSize>16</BitSize><BitOffs>72</BitOffs><Flags><Access>ro</Access><PdoMapping>T</PdoMapping></Flags></SubItem>
+                <SubItem><SubIdx>6</SubIdx><Name>Ch6</Name><Type>INT</Type><BitSize>16</BitSize><BitOffs>88</BitOffs><Flags><Access>ro</Access><PdoMapping>T</PdoMapping></Flags></SubItem>
+                <SubItem><SubIdx>7</SubIdx><Name>Ch7</Name><Type>INT</Type><BitSize>16</BitSize><BitOffs>104</BitOffs><Flags><Access>ro</Access><PdoMapping>T</PdoMapping></Flags></SubItem>
+                <SubItem><SubIdx>8</SubIdx><Name>Ch8</Name><Type>INT</Type><BitSize>16</BitSize><BitOffs>120</BitOffs><Flags><Access>ro</Access><PdoMapping>T</PdoMapping></Flags></SubItem>
+                <SubItem><SubIdx>9</SubIdx><Name>Ch9</Name><Type>INT</Type><BitSize>16</BitSize><BitOffs>136</BitOffs><Flags><Access>ro</Access><PdoMapping>T</PdoMapping></Flags></SubItem>
+                <SubItem><SubIdx>10</SubIdx><Name>Ch10</Name><Type>INT</Type><BitSize>16</BitSize><BitOffs>152</BitOffs><Flags><Access>ro</Access><PdoMapping>T</PdoMapping></Flags></SubItem>
+                <SubItem><SubIdx>11</SubIdx><Name>Ch11</Name><Type>INT</Type><BitSize>16</BitSize><BitOffs>168</BitOffs><Flags><Access>ro</Access><PdoMapping>T</PdoMapping></Flags></SubItem>
+                <SubItem><SubIdx>12</SubIdx><Name>Ch12</Name><Type>INT</Type><BitSize>16</BitSize><BitOffs>184</BitOffs><Flags><Access>ro</Access><PdoMapping>T</PdoMapping></Flags></SubItem>
+              </DataType>
+
+              <!-- 2300h data type: slot output data (RxPDO destination) for ANALOG, 8 subindices max -->
+              <DataType>
+                <Name>DT2300</Name><BitSize>136</BitSize>
+                <SubItem><SubIdx>0</SubIdx><Name>SubIndex 000</Name><Type>USINT</Type><BitSize>8</BitSize><BitOffs>0</BitOffs><Flags><Access>ro</Access></Flags></SubItem>
+                <SubItem><SubIdx>1</SubIdx><Name>Ch1</Name><Type>UINT</Type><BitSize>16</BitSize><BitOffs>8</BitOffs><Flags><Access>rw</Access><PdoMapping>R</PdoMapping></Flags></SubItem>
+                <SubItem><SubIdx>2</SubIdx><Name>Ch2</Name><Type>UINT</Type><BitSize>16</BitSize><BitOffs>24</BitOffs><Flags><Access>rw</Access><PdoMapping>R</PdoMapping></Flags></SubItem>
+                <SubItem><SubIdx>3</SubIdx><Name>Ch3</Name><Type>UINT</Type><BitSize>16</BitSize><BitOffs>40</BitOffs><Flags><Access>rw</Access><PdoMapping>R</PdoMapping></Flags></SubItem>
+                <SubItem><SubIdx>4</SubIdx><Name>Ch4</Name><Type>UINT</Type><BitSize>16</BitSize><BitOffs>56</BitOffs><Flags><Access>rw</Access><PdoMapping>R</PdoMapping></Flags></SubItem>
+                <SubItem><SubIdx>5</SubIdx><Name>Ch5</Name><Type>UINT</Type><BitSize>16</BitSize><BitOffs>72</BitOffs><Flags><Access>rw</Access><PdoMapping>R</PdoMapping></Flags></SubItem>
+                <SubItem><SubIdx>6</SubIdx><Name>Ch6</Name><Type>UINT</Type><BitSize>16</BitSize><BitOffs>88</BitOffs><Flags><Access>rw</Access><PdoMapping>R</PdoMapping></Flags></SubItem>
+                <SubItem><SubIdx>7</SubIdx><Name>Ch7</Name><Type>UINT</Type><BitSize>16</BitSize><BitOffs>104</BitOffs><Flags><Access>rw</Access><PdoMapping>R</PdoMapping></Flags></SubItem>
+                <SubItem><SubIdx>8</SubIdx><Name>Ch8</Name><Type>UINT</Type><BitSize>16</BitSize><BitOffs>120</BitOffs><Flags><Access>rw</Access><PdoMapping>R</PdoMapping></Flags></SubItem>
+              </DataType>
+
+              <!-- NEW: 2200h data type for DI16: 16 channels of 1-bit BOOLs -->
+              <DataType>
+                <Name>DT2200_DI</Name><BitSize>24</BitSize>
+                <SubItem><SubIdx>0</SubIdx><Name>SubIndex 000</Name><Type>USINT</Type><BitSize>8</BitSize><BitOffs>0</BitOffs><Flags><Access>ro</Access></Flags></SubItem>
+                <SubItem><SubIdx>1</SubIdx><Name>Ch1</Name><Type>BOOL</Type><BitSize>1</BitSize><BitOffs>8</BitOffs><Flags><Access>ro</Access><PdoMapping>T</PdoMapping></Flags></SubItem>
+                <SubItem><SubIdx>2</SubIdx><Name>Ch2</Name><Type>BOOL</Type><BitSize>1</BitSize><BitOffs>9</BitOffs><Flags><Access>ro</Access><PdoMapping>T</PdoMapping></Flags></SubItem>
+                <SubItem><SubIdx>3</SubIdx><Name>Ch3</Name><Type>BOOL</Type><BitSize>1</BitSize><BitOffs>10</BitOffs><Flags><Access>ro</Access><PdoMapping>T</PdoMapping></Flags></SubItem>
+                <SubItem><SubIdx>4</SubIdx><Name>Ch4</Name><Type>BOOL</Type><BitSize>1</BitSize><BitOffs>11</BitOffs><Flags><Access>ro</Access><PdoMapping>T</PdoMapping></Flags></SubItem>
+                <SubItem><SubIdx>5</SubIdx><Name>Ch5</Name><Type>BOOL</Type><BitSize>1</BitSize><BitOffs>12</BitOffs><Flags><Access>ro</Access><PdoMapping>T</PdoMapping></Flags></SubItem>
+                <SubItem><SubIdx>6</SubIdx><Name>Ch6</Name><Type>BOOL</Type><BitSize>1</BitSize><BitOffs>13</BitOffs><Flags><Access>ro</Access><PdoMapping>T</PdoMapping></Flags></SubItem>
+                <SubItem><SubIdx>7</SubIdx><Name>Ch7</Name><Type>BOOL</Type><BitSize>1</BitSize><BitOffs>14</BitOffs><Flags><Access>ro</Access><PdoMapping>T</PdoMapping></Flags></SubItem>
+                <SubItem><SubIdx>8</SubIdx><Name>Ch8</Name><Type>BOOL</Type><BitSize>1</BitSize><BitOffs>15</BitOffs><Flags><Access>ro</Access><PdoMapping>T</PdoMapping></Flags></SubItem>
+                <SubItem><SubIdx>9</SubIdx><Name>Ch9</Name><Type>BOOL</Type><BitSize>1</BitSize><BitOffs>16</BitOffs><Flags><Access>ro</Access><PdoMapping>T</PdoMapping></Flags></SubItem>
+                <SubItem><SubIdx>10</SubIdx><Name>Ch10</Name><Type>BOOL</Type><BitSize>1</BitSize><BitOffs>17</BitOffs><Flags><Access>ro</Access><PdoMapping>T</PdoMapping></Flags></SubItem>
+                <SubItem><SubIdx>11</SubIdx><Name>Ch11</Name><Type>BOOL</Type><BitSize>1</BitSize><BitOffs>18</BitOffs><Flags><Access>ro</Access><PdoMapping>T</PdoMapping></Flags></SubItem>
+                <SubItem><SubIdx>12</SubIdx><Name>Ch12</Name><Type>BOOL</Type><BitSize>1</BitSize><BitOffs>19</BitOffs><Flags><Access>ro</Access><PdoMapping>T</PdoMapping></Flags></SubItem>
+                <SubItem><SubIdx>13</SubIdx><Name>Ch13</Name><Type>BOOL</Type><BitSize>1</BitSize><BitOffs>20</BitOffs><Flags><Access>ro</Access><PdoMapping>T</PdoMapping></Flags></SubItem>
+                <SubItem><SubIdx>14</SubIdx><Name>Ch14</Name><Type>BOOL</Type><BitSize>1</BitSize><BitOffs>21</BitOffs><Flags><Access>ro</Access><PdoMapping>T</PdoMapping></Flags></SubItem>
+                <SubItem><SubIdx>15</SubIdx><Name>Ch15</Name><Type>BOOL</Type><BitSize>1</BitSize><BitOffs>22</BitOffs><Flags><Access>ro</Access><PdoMapping>T</PdoMapping></Flags></SubItem>
+                <SubItem><SubIdx>16</SubIdx><Name>Ch16</Name><Type>BOOL</Type><BitSize>1</BitSize><BitOffs>23</BitOffs><Flags><Access>ro</Access><PdoMapping>T</PdoMapping></Flags></SubItem>
+              </DataType>
+
+              <!-- NEW: 2300h data type for DO16: 16 channels of 1-bit BOOLs -->
+              <DataType>
+                <Name>DT2300_DO</Name><BitSize>24</BitSize>
+                <SubItem><SubIdx>0</SubIdx><Name>SubIndex 000</Name><Type>USINT</Type><BitSize>8</BitSize><BitOffs>0</BitOffs><Flags><Access>ro</Access></Flags></SubItem>
+                <SubItem><SubIdx>1</SubIdx><Name>Ch1</Name><Type>BOOL</Type><BitSize>1</BitSize><BitOffs>8</BitOffs><Flags><Access>rw</Access><PdoMapping>R</PdoMapping></Flags></SubItem>
+                <SubItem><SubIdx>2</SubIdx><Name>Ch2</Name><Type>BOOL</Type><BitSize>1</BitSize><BitOffs>9</BitOffs><Flags><Access>rw</Access><PdoMapping>R</PdoMapping></Flags></SubItem>
+                <SubItem><SubIdx>3</SubIdx><Name>Ch3</Name><Type>BOOL</Type><BitSize>1</BitSize><BitOffs>10</BitOffs><Flags><Access>rw</Access><PdoMapping>R</PdoMapping></Flags></SubItem>
+                <SubItem><SubIdx>4</SubIdx><Name>Ch4</Name><Type>BOOL</Type><BitSize>1</BitSize><BitOffs>11</BitOffs><Flags><Access>rw</Access><PdoMapping>R</PdoMapping></Flags></SubItem>
+                <SubItem><SubIdx>5</SubIdx><Name>Ch5</Name><Type>BOOL</Type><BitSize>1</BitSize><BitOffs>12</BitOffs><Flags><Access>rw</Access><PdoMapping>R</PdoMapping></Flags></SubItem>
+                <SubItem><SubIdx>6</SubIdx><Name>Ch6</Name><Type>BOOL</Type><BitSize>1</BitSize><BitOffs>13</BitOffs><Flags><Access>rw</Access><PdoMapping>R</PdoMapping></Flags></SubItem>
+                <SubItem><SubIdx>7</SubIdx><Name>Ch7</Name><Type>BOOL</Type><BitSize>1</BitSize><BitOffs>14</BitOffs><Flags><Access>rw</Access><PdoMapping>R</PdoMapping></Flags></SubItem>
+                <SubItem><SubIdx>8</SubIdx><Name>Ch8</Name><Type>BOOL</Type><BitSize>1</BitSize><BitOffs>15</BitOffs><Flags><Access>rw</Access><PdoMapping>R</PdoMapping></Flags></SubItem>
+                <SubItem><SubIdx>9</SubIdx><Name>Ch9</Name><Type>BOOL</Type><BitSize>1</BitSize><BitOffs>16</BitOffs><Flags><Access>rw</Access><PdoMapping>R</PdoMapping></Flags></SubItem>
+                <SubItem><SubIdx>10</SubIdx><Name>Ch10</Name><Type>BOOL</Type><BitSize>1</BitSize><BitOffs>17</BitOffs><Flags><Access>rw</Access><PdoMapping>R</PdoMapping></Flags></SubItem>
+                <SubItem><SubIdx>11</SubIdx><Name>Ch11</Name><Type>BOOL</Type><BitSize>1</BitSize><BitOffs>18</BitOffs><Flags><Access>rw</Access><PdoMapping>R</PdoMapping></Flags></SubItem>
+                <SubItem><SubIdx>12</SubIdx><Name>Ch12</Name><Type>BOOL</Type><BitSize>1</BitSize><BitOffs>19</BitOffs><Flags><Access>rw</Access><PdoMapping>R</PdoMapping></Flags></SubItem>
+                <SubItem><SubIdx>13</SubIdx><Name>Ch13</Name><Type>BOOL</Type><BitSize>1</BitSize><BitOffs>20</BitOffs><Flags><Access>rw</Access><PdoMapping>R</PdoMapping></Flags></SubItem>
+                <SubItem><SubIdx>14</SubIdx><Name>Ch14</Name><Type>BOOL</Type><BitSize>1</BitSize><BitOffs>21</BitOffs><Flags><Access>rw</Access><PdoMapping>R</PdoMapping></Flags></SubItem>
+                <SubItem><SubIdx>15</SubIdx><Name>Ch15</Name><Type>BOOL</Type><BitSize>1</BitSize><BitOffs>22</BitOffs><Flags><Access>rw</Access><PdoMapping>R</PdoMapping></Flags></SubItem>
+                <SubItem><SubIdx>16</SubIdx><Name>Ch16</Name><Type>BOOL</Type><BitSize>1</BitSize><BitOffs>23</BitOffs><Flags><Access>rw</Access><PdoMapping>R</PdoMapping></Flags></SubItem>
+              </DataType>
+
+              <!-- FSoE type -->
+              <DataType>
+                <Name>DTA000</Name><BitSize>48</BitSize>
+                <SubItem><SubIdx>0</SubIdx><Name>SubIndex 000</Name><Type>USINT</Type><BitSize>8</BitSize><BitOffs>0</BitOffs><Flags><Access>ro</Access></Flags></SubItem>
+                <SubItem><SubIdx>1</SubIdx><Name>Connection State</Name><Type>DT0800EN16</Type><BitSize>16</BitSize><BitOffs>16</BitOffs><Flags><Access>ro</Access></Flags></SubItem>
+                <SubItem><SubIdx>2</SubIdx><Name>Connection Diagnosis</Name><Type>UINT</Type><BitSize>16</BitSize><BitOffs>32</BitOffs><Flags><Access>ro</Access></Flags></SubItem>
+              </DataType>
+            </DataTypes>
+
+            <Objects>
+              <!-- Standard CoE objects -->
+              <Object><Index>#x1000</Index><Name>Device type</Name><Type>UDINT</Type><BitSize>32</BitSize><Flags><Access>ro</Access></Flags></Object>
+              <Object><Index>#x1001</Index><Name>Error register</Name><Type>USINT</Type><BitSize>8</BitSize><Flags><Access>ro</Access></Flags></Object>
+              <Object><Index>#x1008</Index><Name>Device name</Name><Type>STRING(34)</Type><BitSize>272</BitSize><Flags><Access>ro</Access></Flags></Object>
+              <Object><Index>#x1009</Index><Name>Hardware version</Name><Type>STRING(3)</Type><BitSize>24</BitSize><Flags><Access>ro</Access></Flags></Object>
+              <Object><Index>#x100a</Index><Name>Software version</Name><Type>STRING(7)</Type><BitSize>56</BitSize><Flags><Access>ro</Access></Flags></Object>
+              <Object><Index>#x1018</Index><Name>Identity</Name><Type>DT1018</Type><BitSize>144</BitSize><Flags><Access>ro</Access></Flags></Object>
+              <Object><Index>#x10f1</Index><Name>Error Settings</Name><Type>DT10F1</Type><BitSize>64</BitSize><Flags><Access>ro</Access></Flags></Object>
+              <Object><Index>#x10f3</Index><Name>Diagnosis History</Name><Type>DT10F3</Type><BitSize>64</BitSize><Flags><Access>ro</Access></Flags></Object>
+              <Object><Index>#x10f8</Index><Name>Timestamp Object</Name><Type>ULINT</Type><BitSize>64</BitSize><Flags><Access>rw</Access><PdoMapping>T</PdoMapping></Flags></Object>
+
+              <!-- RxPDO mapping objects 1600h – 1613h (20 slots) -->
+              <Object><Index>#x1600</Index><Name>RxPDO1</Name><Type>DT1600</Type><BitSize>264</BitSize><Flags><Access WriteRestrictions="PreOP">rw</Access></Flags></Object>
+              <Object><Index>#x1601</Index><Name>RxPDO2</Name><Type>DT1600</Type><BitSize>264</BitSize><Flags><Access WriteRestrictions="PreOP">rw</Access></Flags></Object>
+              <Object><Index>#x1602</Index><Name>RxPDO3</Name><Type>DT1600</Type><BitSize>264</BitSize><Flags><Access WriteRestrictions="PreOP">rw</Access></Flags></Object>
+              <Object><Index>#x1603</Index><Name>RxPDO4</Name><Type>DT1600</Type><BitSize>264</BitSize><Flags><Access WriteRestrictions="PreOP">rw</Access></Flags></Object>
+              <Object><Index>#x1604</Index><Name>RxPDO5</Name><Type>DT1600</Type><BitSize>264</BitSize><Flags><Access WriteRestrictions="PreOP">rw</Access></Flags></Object>
+              <Object><Index>#x1605</Index><Name>RxPDO6</Name><Type>DT1600</Type><BitSize>264</BitSize><Flags><Access WriteRestrictions="PreOP">rw</Access></Flags></Object>
+              <Object><Index>#x1606</Index><Name>RxPDO7</Name><Type>DT1600</Type><BitSize>264</BitSize><Flags><Access WriteRestrictions="PreOP">rw</Access></Flags></Object>
+              <Object><Index>#x1607</Index><Name>RxPDO8</Name><Type>DT1600</Type><BitSize>264</BitSize><Flags><Access WriteRestrictions="PreOP">rw</Access></Flags></Object>
+              <Object><Index>#x1608</Index><Name>RxPDO9</Name><Type>DT1600</Type><BitSize>264</BitSize><Flags><Access WriteRestrictions="PreOP">rw</Access></Flags></Object>
+              <Object><Index>#x1609</Index><Name>RxPDO10</Name><Type>DT1600</Type><BitSize>264</BitSize><Flags><Access WriteRestrictions="PreOP">rw</Access></Flags></Object>
+              <Object><Index>#x160A</Index><Name>RxPDO11</Name><Type>DT1600</Type><BitSize>264</BitSize><Flags><Access WriteRestrictions="PreOP">rw</Access></Flags></Object>
+              <Object><Index>#x160B</Index><Name>RxPDO12</Name><Type>DT1600</Type><BitSize>264</BitSize><Flags><Access WriteRestrictions="PreOP">rw</Access></Flags></Object>
+              <Object><Index>#x160C</Index><Name>RxPDO13</Name><Type>DT1600</Type><BitSize>264</BitSize><Flags><Access WriteRestrictions="PreOP">rw</Access></Flags></Object>
+              <Object><Index>#x160D</Index><Name>RxPDO14</Name><Type>DT1600</Type><BitSize>264</BitSize><Flags><Access WriteRestrictions="PreOP">rw</Access></Flags></Object>
+              <Object><Index>#x160E</Index><Name>RxPDO15</Name><Type>DT1600</Type><BitSize>264</BitSize><Flags><Access WriteRestrictions="PreOP">rw</Access></Flags></Object>
+              <Object><Index>#x160F</Index><Name>RxPDO16</Name><Type>DT1600</Type><BitSize>264</BitSize><Flags><Access WriteRestrictions="PreOP">rw</Access></Flags></Object>
+              <Object><Index>#x1610</Index><Name>RxPDO17</Name><Type>DT1600</Type><BitSize>264</BitSize><Flags><Access WriteRestrictions="PreOP">rw</Access></Flags></Object>
+              <Object><Index>#x1611</Index><Name>RxPDO18</Name><Type>DT1600</Type><BitSize>264</BitSize><Flags><Access WriteRestrictions="PreOP">rw</Access></Flags></Object>
+              <Object><Index>#x1612</Index><Name>RxPDO19</Name><Type>DT1600</Type><BitSize>264</BitSize><Flags><Access WriteRestrictions="PreOP">rw</Access></Flags></Object>
+              <Object><Index>#x1613</Index><Name>RxPDO20</Name><Type>DT1600</Type><BitSize>264</BitSize><Flags><Access WriteRestrictions="PreOP">rw</Access></Flags></Object>
+
+              <!-- TxPDO mapping objects 1A00h – 1A13h (20 slots) -->
+              <Object><Index>#x1A00</Index><Name>TxPDO1</Name><Type>DT1600</Type><BitSize>264</BitSize><Flags><Access WriteRestrictions="PreOP">rw</Access></Flags></Object>
+              <Object><Index>#x1A01</Index><Name>TxPDO2</Name><Type>DT1600</Type><BitSize>264</BitSize><Flags><Access WriteRestrictions="PreOP">rw</Access></Flags></Object>
+              <Object><Index>#x1A02</Index><Name>TxPDO3</Name><Type>DT1600</Type><BitSize>264</BitSize><Flags><Access WriteRestrictions="PreOP">rw</Access></Flags></Object>
+              <Object><Index>#x1A03</Index><Name>TxPDO4</Name><Type>DT1600</Type><BitSize>264</BitSize><Flags><Access WriteRestrictions="PreOP">rw</Access></Flags></Object>
+              <Object><Index>#x1A04</Index><Name>TxPDO5</Name><Type>DT1600</Type><BitSize>264</BitSize><Flags><Access WriteRestrictions="PreOP">rw</Access></Flags></Object>
+              <Object><Index>#x1A05</Index><Name>TxPDO6</Name><Type>DT1600</Type><BitSize>264</BitSize><Flags><Access WriteRestrictions="PreOP">rw</Access></Flags></Object>
+              <Object><Index>#x1A06</Index><Name>TxPDO7</Name><Type>DT1600</Type><BitSize>264</BitSize><Flags><Access WriteRestrictions="PreOP">rw</Access></Flags></Object>
+              <Object><Index>#x1A07</Index><Name>TxPDO8</Name><Type>DT1600</Type><BitSize>264</BitSize><Flags><Access WriteRestrictions="PreOP">rw</Access></Flags></Object>
+              <Object><Index>#x1A08</Index><Name>TxPDO9</Name><Type>DT1600</Type><BitSize>264</BitSize><Flags><Access WriteRestrictions="PreOP">rw</Access></Flags></Object>
+              <Object><Index>#x1A09</Index><Name>TxPDO10</Name><Type>DT1600</Type><BitSize>264</BitSize><Flags><Access WriteRestrictions="PreOP">rw</Access></Flags></Object>
+              <Object><Index>#x1A0A</Index><Name>TxPDO11</Name><Type>DT1600</Type><BitSize>264</BitSize><Flags><Access WriteRestrictions="PreOP">rw</Access></Flags></Object>
+              <Object><Index>#x1A0B</Index><Name>TxPDO12</Name><Type>DT1600</Type><BitSize>264</BitSize><Flags><Access WriteRestrictions="PreOP">rw</Access></Flags></Object>
+              <Object><Index>#x1A0C</Index><Name>TxPDO13</Name><Type>DT1600</Type><BitSize>264</BitSize><Flags><Access WriteRestrictions="PreOP">rw</Access></Flags></Object>
+              <Object><Index>#x1A0D</Index><Name>TxPDO14</Name><Type>DT1600</Type><BitSize>264</BitSize><Flags><Access WriteRestrictions="PreOP">rw</Access></Flags></Object>
+              <Object><Index>#x1A0E</Index><Name>TxPDO15</Name><Type>DT1600</Type><BitSize>264</BitSize><Flags><Access WriteRestrictions="PreOP">rw</Access></Flags></Object>
+              <Object><Index>#x1A0F</Index><Name>TxPDO16</Name><Type>DT1600</Type><BitSize>264</BitSize><Flags><Access WriteRestrictions="PreOP">rw</Access></Flags></Object>
+              <Object><Index>#x1A10</Index><Name>TxPDO17</Name><Type>DT1600</Type><BitSize>264</BitSize><Flags><Access WriteRestrictions="PreOP">rw</Access></Flags></Object>
+              <Object><Index>#x1A11</Index><Name>TxPDO18</Name><Type>DT1600</Type><BitSize>264</BitSize><Flags><Access WriteRestrictions="PreOP">rw</Access></Flags></Object>
+              <Object><Index>#x1A12</Index><Name>TxPDO19</Name><Type>DT1600</Type><BitSize>264</BitSize><Flags><Access WriteRestrictions="PreOP">rw</Access></Flags></Object>
+              <Object><Index>#x1A13</Index><Name>TxPDO20</Name><Type>DT1600</Type><BitSize>264</BitSize><Flags><Access WriteRestrictions="PreOP">rw</Access></Flags></Object>
+
+              <!-- SM objects -->
+              <Object><Index>#x1c00</Index><Name>Sync manager type</Name><Type>DT1C00</Type><BitSize>48</BitSize><Flags><Access>ro</Access></Flags></Object>
+              <Object><Index>#x1c12</Index><Name>RxPDO assign</Name><Type>DT1C12</Type><BitSize>48</BitSize><Flags><Access>ro</Access></Flags></Object>
+              <Object><Index>#x1c13</Index><Name>TxPDO assign</Name><Type>DT1C13</Type><BitSize>48</BitSize><Flags><Access>ro</Access></Flags></Object>
+              <Object><Index>#x1c32</Index><Name>SM output parameter</Name><Type>DT1C32</Type><BitSize>488</BitSize><Flags><Access>ro</Access></Flags></Object>
+              <Object><Index>#x1c33</Index><Name>SM input parameter</Name><Type>DT1C32</Type><BitSize>488</BitSize><Flags><Access>ro</Access></Flags></Object>
+
+              <!-- Vendor-specific objects -->
+              <Object><Index>#x2008</Index><Name>Input Process Data Length</Name><Type>UINT</Type><BitSize>16</BitSize><Flags><Access>ro</Access></Flags></Object>
+              <Object><Index>#x2009</Index><Name>Output Process Data Length</Name><Type>UINT</Type><BitSize>16</BitSize><Flags><Access>ro</Access></Flags></Object>
+              <Object><Index>#x200c</Index><Name>Emergency message</Name><Type>UDINT</Type><BitSize>32</BitSize><Flags><Access>rw</Access></Flags></Object>
+              <Object><Index>#x200e</Index><Name>EoE Send Frame</Name><Type>UDINT</Type><BitSize>32</BitSize><Flags><Access>rw</Access></Flags></Object>
+              <Object><Index>#x2015</Index><Name>FoE File Downloaded</Name><Type>BOOL</Type><BitSize>1</BitSize><Flags><Access>ro</Access></Flags></Object>
+              <Object><Index>#x2016</Index><Name>Write Variable</Name><Type>UDINT</Type><BitSize>32</BitSize><Flags><Access>rw</Access></Flags></Object>
+              <Object><Index>#x2017</Index><Name>Incr. by read</Name><Type>UDINT</Type><BitSize>32</BitSize><Flags><Access>ro</Access></Flags></Object>
+              <Object><Index>#x2018</Index><Name>Test Diagnosis</Name><Type>USINT</Type><BitSize>8</BitSize><Flags><Access>rw</Access></Flags></Object>
+
+              <!-- Slot input data objects 2200h–2213h (one per slot, 20 slots) -->
+              <Object><Index>#x2200</Index><Name>Slot 1 Input Data</Name><Type>DT2200</Type><BitSize>200</BitSize><Flags><Access>ro</Access></Flags></Object>
+              <Object><Index>#x2201</Index><Name>Slot 2 Input Data</Name><Type>DT2200</Type><BitSize>200</BitSize><Flags><Access>ro</Access></Flags></Object>
+              <Object><Index>#x2202</Index><Name>Slot 3 Input Data</Name><Type>DT2200</Type><BitSize>200</BitSize><Flags><Access>ro</Access></Flags></Object>
+              <Object><Index>#x2203</Index><Name>Slot 4 Input Data</Name><Type>DT2200</Type><BitSize>200</BitSize><Flags><Access>ro</Access></Flags></Object>
+              <Object><Index>#x2204</Index><Name>Slot 5 Input Data</Name><Type>DT2200</Type><BitSize>200</BitSize><Flags><Access>ro</Access></Flags></Object>
+              <Object><Index>#x2205</Index><Name>Slot 6 Input Data</Name><Type>DT2200</Type><BitSize>200</BitSize><Flags><Access>ro</Access></Flags></Object>
+              <Object><Index>#x2206</Index><Name>Slot 7 Input Data</Name><Type>DT2200</Type><BitSize>200</BitSize><Flags><Access>ro</Access></Flags></Object>
+              <Object><Index>#x2207</Index><Name>Slot 8 Input Data</Name><Type>DT2200</Type><BitSize>200</BitSize><Flags><Access>ro</Access></Flags></Object>
+              <Object><Index>#x2208</Index><Name>Slot 9 Input Data</Name><Type>DT2200</Type><BitSize>200</BitSize><Flags><Access>ro</Access></Flags></Object>
+              <Object><Index>#x2209</Index><Name>Slot 10 Input Data</Name><Type>DT2200</Type><BitSize>200</BitSize><Flags><Access>ro</Access></Flags></Object>
+              <Object><Index>#x220A</Index><Name>Slot 11 Input Data</Name><Type>DT2200</Type><BitSize>200</BitSize><Flags><Access>ro</Access></Flags></Object>
+              <Object><Index>#x220B</Index><Name>Slot 12 Input Data</Name><Type>DT2200</Type><BitSize>200</BitSize><Flags><Access>ro</Access></Flags></Object>
+              <Object><Index>#x220C</Index><Name>Slot 13 Input Data</Name><Type>DT2200</Type><BitSize>200</BitSize><Flags><Access>ro</Access></Flags></Object>
+              <Object><Index>#x220D</Index><Name>Slot 14 Input Data</Name><Type>DT2200</Type><BitSize>200</BitSize><Flags><Access>ro</Access></Flags></Object>
+              <Object><Index>#x220E</Index><Name>Slot 15 Input Data</Name><Type>DT2200</Type><BitSize>200</BitSize><Flags><Access>ro</Access></Flags></Object>
+              <Object><Index>#x220F</Index><Name>Slot 16 Input Data</Name><Type>DT2200</Type><BitSize>200</BitSize><Flags><Access>ro</Access></Flags></Object>
+              <Object><Index>#x2210</Index><Name>Slot 17 Input Data</Name><Type>DT2200</Type><BitSize>200</BitSize><Flags><Access>ro</Access></Flags></Object>
+              <Object><Index>#x2211</Index><Name>Slot 18 Input Data</Name><Type>DT2200</Type><BitSize>200</BitSize><Flags><Access>ro</Access></Flags></Object>
+              <Object><Index>#x2212</Index><Name>Slot 19 Input Data</Name><Type>DT2200</Type><BitSize>200</BitSize><Flags><Access>ro</Access></Flags></Object>
+              <Object><Index>#x2213</Index><Name>Slot 20 Input Data</Name><Type>DT2200</Type><BitSize>200</BitSize><Flags><Access>ro</Access></Flags></Object>
+
+              <!-- Slot output data objects 2300h–2313h (one per slot, 20 slots) -->
+              <Object><Index>#x2300</Index><Name>Slot 1 Output Data</Name><Type>DT2300</Type><BitSize>136</BitSize><Flags><Access>rw</Access></Flags></Object>
+              <Object><Index>#x2301</Index><Name>Slot 2 Output Data</Name><Type>DT2300</Type><BitSize>136</BitSize><Flags><Access>rw</Access></Flags></Object>
+              <Object><Index>#x2302</Index><Name>Slot 3 Output Data</Name><Type>DT2300</Type><BitSize>136</BitSize><Flags><Access>rw</Access></Flags></Object>
+              <Object><Index>#x2303</Index><Name>Slot 4 Output Data</Name><Type>DT2300</Type><BitSize>136</BitSize><Flags><Access>rw</Access></Flags></Object>
+              <Object><Index>#x2304</Index><Name>Slot 5 Output Data</Name><Type>DT2300</Type><BitSize>136</BitSize><Flags><Access>rw</Access></Flags></Object>
+              <Object><Index>#x2305</Index><Name>Slot 6 Output Data</Name><Type>DT2300</Type><BitSize>136</BitSize><Flags><Access>rw</Access></Flags></Object>
+              <Object><Index>#x2306</Index><Name>Slot 7 Output Data</Name><Type>DT2300</Type><BitSize>136</BitSize><Flags><Access>rw</Access></Flags></Object>
+              <Object><Index>#x2307</Index><Name>Slot 8 Output Data</Name><Type>DT2300</Type><BitSize>136</BitSize><Flags><Access>rw</Access></Flags></Object>
+              <Object><Index>#x2308</Index><Name>Slot 9 Output Data</Name><Type>DT2300</Type><BitSize>136</BitSize><Flags><Access>rw</Access></Flags></Object>
+              <Object><Index>#x2309</Index><Name>Slot 10 Output Data</Name><Type>DT2300</Type><BitSize>136</BitSize><Flags><Access>rw</Access></Flags></Object>
+              <Object><Index>#x230A</Index><Name>Slot 11 Output Data</Name><Type>DT2300</Type><BitSize>136</BitSize><Flags><Access>rw</Access></Flags></Object>
+              <Object><Index>#x230B</Index><Name>Slot 12 Output Data</Name><Type>DT2300</Type><BitSize>136</BitSize><Flags><Access>rw</Access></Flags></Object>
+              <Object><Index>#x230C</Index><Name>Slot 13 Output Data</Name><Type>DT2300</Type><BitSize>136</BitSize><Flags><Access>rw</Access></Flags></Object>
+              <Object><Index>#x230D</Index><Name>Slot 14 Output Data</Name><Type>DT2300</Type><BitSize>136</BitSize><Flags><Access>rw</Access></Flags></Object>
+              <Object><Index>#x230E</Index><Name>Slot 15 Output Data</Name><Type>DT2300</Type><BitSize>136</BitSize><Flags><Access>rw</Access></Flags></Object>
+              <Object><Index>#x230F</Index><Name>Slot 16 Output Data</Name><Type>DT2300</Type><BitSize>136</BitSize><Flags><Access>rw</Access></Flags></Object>
+              <Object><Index>#x2310</Index><Name>Slot 17 Output Data</Name><Type>DT2300</Type><BitSize>136</BitSize><Flags><Access>rw</Access></Flags></Object>
+              <Object><Index>#x2311</Index><Name>Slot 18 Output Data</Name><Type>DT2300</Type><BitSize>136</BitSize><Flags><Access>rw</Access></Flags></Object>
+              <Object><Index>#x2312</Index><Name>Slot 19 Output Data</Name><Type>DT2300</Type><BitSize>136</BitSize><Flags><Access>rw</Access></Flags></Object>
+              <Object><Index>#x2313</Index><Name>Slot 20 Output Data</Name><Type>DT2300</Type><BitSize>136</BitSize><Flags><Access>rw</Access></Flags></Object>
+
+              <!-- Mandatory Modular Device Profile objects (ETG.5001) -->
+              <Object>
+                <Index>#xF000</Index>
+                <Name>Modular Device Profile</Name>
+                <Type>UINT</Type>
+                <BitSize>16</BitSize>
+                <Flags><Access>ro</Access></Flags>
+              </Object>
+              <Object>
+                <Index>#xF008</Index>
+                <Name>Code Word</Name>
+                <Type>UDINT</Type>
+                <BitSize>32</BitSize>
+                <Flags><Access>ro</Access></Flags>
+              </Object>
+              <Object>
+                <Index>#xF010</Index>
+                <Name>Module Profile List</Name>
+                <Type>UDINT</Type>
+                <BitSize>32</BitSize>
+                <Flags><Access>ro</Access></Flags>
+              </Object>
+              <Object>
+                <Index>#xF030</Index>
+                <Name>Configured Module Ident List</Name>
+                <Type>DTF030</Type>
+                <BitSize>656</BitSize>
+                <Flags><Access>rw</Access></Flags>
+              </Object>
+              <Object>
+                <Index>#xF050</Index>
+                <Name>Detected Module Ident List</Name>
+                <Type>DTF000</Type>
+                <BitSize>656</BitSize>
+                <Flags><Access>ro</Access></Flags>
+              </Object>
+
+              <!-- FSoE -->
+              <Object><Index>#xa000</Index><Name>FSoE Digital IO Module</Name><Type>DTA000</Type><BitSize>48</BitSize><Flags><Access>ro</Access></Flags></Object>
+            </Objects>
+          </Dictionary>
+        </Profile>
+
+        <!-- FMMU order must be Outputs / Inputs / MBoxState -->
+        <Fmmu>Outputs</Fmmu>
+        <Fmmu>Inputs</Fmmu>
+        <Fmmu>MBoxState</Fmmu>
+
+        <Sm DefaultSize="1024" StartAddress="#x1000" ControlByte="#x26" Enable="1">MBoxOut</Sm>
+        <Sm DefaultSize="1024" StartAddress="#x1400" ControlByte="#x22" Enable="1">MBoxIn</Sm>
+        <!-- Master -> Slave -->
+        <Sm DefaultSize="1024" StartAddress="#x1800" ControlByte="#x64" Enable="1">Outputs</Sm>
+        <!-- Slave -> Master -->
+        <Sm DefaultSize="1024" StartAddress="#x1C00" ControlByte="#x20" Enable="1">Inputs</Sm>
+
+        <Mailbox DataLinkLayer="true">
+          <AoE AdsRouter="1" GenerateOwnNetId="1" InitializeOwnNetId="1"/>
+          <EoE/>
+          <CoE DiagHistory="true" SdoInfo="true" PdoConfig="true" PdoUpload="true" CompleteAccess="true"/>
+          <FoE/>
+        </Mailbox>
+
+        <Dc>
+          <OpMode>
+            <Name>SM-Synchron</Name><Desc>SM-Synchron</Desc>
+            <AssignActivate>#x0</AssignActivate>
+            <CycleTimeSync0 Factor="1">0</CycleTimeSync0>
+            <ShiftTimeSync0>0</ShiftTimeSync0>
+            <CycleTimeSync1 Factor="2">0</CycleTimeSync1>
+            <ShiftTimeSync1>0</ShiftTimeSync1>
+          </OpMode>
+          <OpMode>
+            <Name>DC-Synchron</Name><Desc>DC-Synchron</Desc>
+            <AssignActivate>#x300</AssignActivate>
+            <CycleTimeSync0 Factor="1">0</CycleTimeSync0>
+            <ShiftTimeSync0>0</ShiftTimeSync0>
+            <CycleTimeSync1 Factor="2">0</CycleTimeSync1>
+            <ShiftTimeSync1>0</ShiftTimeSync1>
+          </OpMode>
+        </Dc>
+
+        <Slots SlotIndexIncrement="1"
+               SlotPdoIncrement="1"
+               IdentifyModuleBy="ModuleIdent"
+               DownloadModuleIdentList="1">
+          <Slot MinInstances="0" MaxInstances="20">
+            <Name>Terminals</Name>
+            <ModuleClass><Class>DI</Class><Name>Digital Input</Name></ModuleClass>
+            <ModuleClass><Class>DO</Class><Name>Digital Output</Name></ModuleClass>
+            <ModuleClass><Class>AIC</Class><Name>Analog Input Current</Name></ModuleClass>
+            <ModuleClass><Class>AIV</Class><Name>Analog Input Voltage</Name></ModuleClass>
+            <ModuleClass><Class>AOC</Class><Name>Analog Output Current</Name></ModuleClass>
+            <ModuleClass><Class>AOV</Class><Name>Analog Output Voltage</Name></ModuleClass>
+            <ModuleClass><Class>RTDY</Class><Name>RTD PT100</Name></ModuleClass>
+            <ModuleClass><Class>RTDB</Class><Name>RTD PT1000</Name></ModuleClass>
+          </Slot>
+        </Slots>
+
+        <Eeprom>
+          <ByteSize>2048</ByteSize>
+          <ConfigData>800ce088e8030000000000000000</ConfigData>
+          <BootStrap>0010000100120001</BootStrap>
+        </Eeprom>
+      </Device>
+    </Devices>
+
+    <Modules>
+
+      <!-- ─── DO16: Digital Output 16 Channels ─────────────────────────── -->
+      <Module>
+        <Type ModuleClass="DO" ModuleIdent="#x20000001">DO16</Type>
+        <Name>Digital Output 16 Channels</Name>
+        <RxPdo Fixed="false" Mandatory="1" Sm="2">
+          <Index DependOnSlot="true">#x1600</Index>
+          <Name>Digital Output(s)</Name>
+          <!-- Mapped as 16 individual 1-bit BOOLs -->
+          <Entry><Index DependOnSlot="true">#x2300</Index><SubIndex>1</SubIndex><BitLen>1</BitLen><Name>Ch1</Name><DataType>BOOL</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2300</Index><SubIndex>2</SubIndex><BitLen>1</BitLen><Name>Ch2</Name><DataType>BOOL</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2300</Index><SubIndex>3</SubIndex><BitLen>1</BitLen><Name>Ch3</Name><DataType>BOOL</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2300</Index><SubIndex>4</SubIndex><BitLen>1</BitLen><Name>Ch4</Name><DataType>BOOL</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2300</Index><SubIndex>5</SubIndex><BitLen>1</BitLen><Name>Ch5</Name><DataType>BOOL</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2300</Index><SubIndex>6</SubIndex><BitLen>1</BitLen><Name>Ch6</Name><DataType>BOOL</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2300</Index><SubIndex>7</SubIndex><BitLen>1</BitLen><Name>Ch7</Name><DataType>BOOL</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2300</Index><SubIndex>8</SubIndex><BitLen>1</BitLen><Name>Ch8</Name><DataType>BOOL</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2300</Index><SubIndex>9</SubIndex><BitLen>1</BitLen><Name>Ch9</Name><DataType>BOOL</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2300</Index><SubIndex>10</SubIndex><BitLen>1</BitLen><Name>Ch10</Name><DataType>BOOL</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2300</Index><SubIndex>11</SubIndex><BitLen>1</BitLen><Name>Ch11</Name><DataType>BOOL</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2300</Index><SubIndex>12</SubIndex><BitLen>1</BitLen><Name>Ch12</Name><DataType>BOOL</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2300</Index><SubIndex>13</SubIndex><BitLen>1</BitLen><Name>Ch13</Name><DataType>BOOL</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2300</Index><SubIndex>14</SubIndex><BitLen>1</BitLen><Name>Ch14</Name><DataType>BOOL</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2300</Index><SubIndex>15</SubIndex><BitLen>1</BitLen><Name>Ch15</Name><DataType>BOOL</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2300</Index><SubIndex>16</SubIndex><BitLen>1</BitLen><Name>Ch16</Name><DataType>BOOL</DataType></Entry>
+        </RxPdo>
+        <Profile>
+          <Dictionary>
+            <DataTypes>
+              <DataType><Name>BOOL</Name><BitSize>1</BitSize></DataType>
+              <DataType><Name>USINT</Name><BitSize>8</BitSize></DataType>
+            </DataTypes>
+            <Objects>
+              <Object>
+                <Index>#x2300</Index>
+                <Name>Output Data</Name>
+                <Type>DT2300_DO</Type>
+                <BitSize>24</BitSize>
+                <Flags><Access>rw</Access></Flags>
+              </Object>
+            </Objects>
+          </Dictionary>
+        </Profile>
+      </Module>
+
+      <!-- ─── DI16: Digital Input 16 Channels ──────────────────────────── -->
+      <Module>
+        <Type ModuleClass="DI" ModuleIdent="#x20000002">DI16</Type>
+        <Name>Digital Input 16 Channels</Name>
+        <TxPdo Fixed="false" Mandatory="1" Sm="3">
+          <Index DependOnSlot="true">#x1A00</Index>
+          <Name>Digital Input(s)</Name>
+          <!-- Mapped as 16 individual 1-bit BOOLs -->
+          <Entry><Index DependOnSlot="true">#x2200</Index><SubIndex>1</SubIndex><BitLen>1</BitLen><Name>Ch1</Name><DataType>BOOL</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2200</Index><SubIndex>2</SubIndex><BitLen>1</BitLen><Name>Ch2</Name><DataType>BOOL</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2200</Index><SubIndex>3</SubIndex><BitLen>1</BitLen><Name>Ch3</Name><DataType>BOOL</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2200</Index><SubIndex>4</SubIndex><BitLen>1</BitLen><Name>Ch4</Name><DataType>BOOL</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2200</Index><SubIndex>5</SubIndex><BitLen>1</BitLen><Name>Ch5</Name><DataType>BOOL</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2200</Index><SubIndex>6</SubIndex><BitLen>1</BitLen><Name>Ch6</Name><DataType>BOOL</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2200</Index><SubIndex>7</SubIndex><BitLen>1</BitLen><Name>Ch7</Name><DataType>BOOL</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2200</Index><SubIndex>8</SubIndex><BitLen>1</BitLen><Name>Ch8</Name><DataType>BOOL</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2200</Index><SubIndex>9</SubIndex><BitLen>1</BitLen><Name>Ch9</Name><DataType>BOOL</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2200</Index><SubIndex>10</SubIndex><BitLen>1</BitLen><Name>Ch10</Name><DataType>BOOL</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2200</Index><SubIndex>11</SubIndex><BitLen>1</BitLen><Name>Ch11</Name><DataType>BOOL</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2200</Index><SubIndex>12</SubIndex><BitLen>1</BitLen><Name>Ch12</Name><DataType>BOOL</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2200</Index><SubIndex>13</SubIndex><BitLen>1</BitLen><Name>Ch13</Name><DataType>BOOL</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2200</Index><SubIndex>14</SubIndex><BitLen>1</BitLen><Name>Ch14</Name><DataType>BOOL</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2200</Index><SubIndex>15</SubIndex><BitLen>1</BitLen><Name>Ch15</Name><DataType>BOOL</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2200</Index><SubIndex>16</SubIndex><BitLen>1</BitLen><Name>Ch16</Name><DataType>BOOL</DataType></Entry>
+        </TxPdo>
+        <Profile>
+          <Dictionary>
+            <DataTypes>
+              <DataType><Name>BOOL</Name><BitSize>1</BitSize></DataType>
+              <DataType><Name>USINT</Name><BitSize>8</BitSize></DataType>
+            </DataTypes>
+            <Objects>
+              <Object>
+                <Index>#x2200</Index>
+                <Name>Input Data</Name>
+                <Type>DT2200_DI</Type>
+                <BitSize>24</BitSize>
+                <Flags><Access>ro</Access></Flags>
+              </Object>
+            </Objects>
+          </Dictionary>
+        </Profile>
+      </Module>
+  
+      <!-- ─── AIC8: Analog Input Current 8 Channels ────────────────────── -->
+      <Module>
+        <Type ModuleClass="AIC" ModuleIdent="#x20000003">AIC8</Type>
+        <Name>Analog Input Current 8 Channels</Name>
+        <TxPdo Fixed="false" Mandatory="1" Sm="3">
+          <Index DependOnSlot="true">#x1A00</Index>
+          <Name>Analog Current Input(s)</Name>
+          <Entry><Index DependOnSlot="true">#x2200</Index><SubIndex>1</SubIndex><BitLen>16</BitLen><Name>Ch1</Name><DataType>UINT</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2200</Index><SubIndex>2</SubIndex><BitLen>16</BitLen><Name>Ch2</Name><DataType>UINT</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2200</Index><SubIndex>3</SubIndex><BitLen>16</BitLen><Name>Ch3</Name><DataType>UINT</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2200</Index><SubIndex>4</SubIndex><BitLen>16</BitLen><Name>Ch4</Name><DataType>UINT</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2200</Index><SubIndex>5</SubIndex><BitLen>16</BitLen><Name>Ch5</Name><DataType>UINT</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2200</Index><SubIndex>6</SubIndex><BitLen>16</BitLen><Name>Ch6</Name><DataType>UINT</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2200</Index><SubIndex>7</SubIndex><BitLen>16</BitLen><Name>Ch7</Name><DataType>UINT</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2200</Index><SubIndex>8</SubIndex><BitLen>16</BitLen><Name>Ch8</Name><DataType>UINT</DataType></Entry>
+        </TxPdo>
+        <Profile>
+          <Dictionary>
+            <DataTypes>
+              <DataType><Name>INT</Name><BitSize>16</BitSize></DataType>
+              <DataType><Name>USINT</Name><BitSize>8</BitSize></DataType>
+            </DataTypes>
+            <Objects>
+              <Object><Index>#x2200</Index><Name>Input Data</Name><Type>DT2200</Type><BitSize>200</BitSize><Flags><Access>ro</Access></Flags></Object>
+            </Objects>
+          </Dictionary>
+        </Profile>
+      </Module>
+
+      <!-- ─── AIV8: Analog Input Voltage 8 Channels ────────────────────── -->
+      <Module>
+        <Type ModuleClass="AIV" ModuleIdent="#x20000004">AIV8</Type>
+        <Name>Analog Input Voltage 8 Channels</Name>
+        <TxPdo Fixed="false" Mandatory="1" Sm="3">
+          <Index DependOnSlot="true">#x1A00</Index>
+          <Name>Analog Voltage Input(s)</Name>
+          <Entry><Index DependOnSlot="true">#x2200</Index><SubIndex>1</SubIndex><BitLen>16</BitLen><Name>Ch1</Name><DataType>UINT</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2200</Index><SubIndex>2</SubIndex><BitLen>16</BitLen><Name>Ch2</Name><DataType>UINT</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2200</Index><SubIndex>3</SubIndex><BitLen>16</BitLen><Name>Ch3</Name><DataType>UINT</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2200</Index><SubIndex>4</SubIndex><BitLen>16</BitLen><Name>Ch4</Name><DataType>UINT</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2200</Index><SubIndex>5</SubIndex><BitLen>16</BitLen><Name>Ch5</Name><DataType>UINT</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2200</Index><SubIndex>6</SubIndex><BitLen>16</BitLen><Name>Ch6</Name><DataType>UINT</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2200</Index><SubIndex>7</SubIndex><BitLen>16</BitLen><Name>Ch7</Name><DataType>UINT</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2200</Index><SubIndex>8</SubIndex><BitLen>16</BitLen><Name>Ch8</Name><DataType>UINT</DataType></Entry>
+        </TxPdo>
+        <Profile>
+          <Dictionary>
+            <DataTypes>
+              <DataType><Name>INT</Name><BitSize>16</BitSize></DataType>
+              <DataType><Name>USINT</Name><BitSize>8</BitSize></DataType>
+            </DataTypes>
+            <Objects>
+              <Object><Index>#x2200</Index><Name>Input Data</Name><Type>DT2200</Type><BitSize>200</BitSize><Flags><Access>ro</Access></Flags></Object>
+            </Objects>
+          </Dictionary>
+        </Profile>
+      </Module>
+
+      <!-- ─── AOC8: Analog Output Current 8 Channels ───────────────────── -->
+      <Module>
+        <Type ModuleClass="AOC" ModuleIdent="#x20000005">AOC8</Type>
+        <Name>Analog Output Current 8 Channels</Name>
+        <RxPdo Fixed="false" Mandatory="1" Sm="2">
+          <Index DependOnSlot="true">#x1600</Index>
+          <Name>Analog Current Output(s)</Name>
+          <Entry><Index DependOnSlot="true">#x2300</Index><SubIndex>1</SubIndex><BitLen>16</BitLen><Name>Ch1</Name><DataType>UINT</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2300</Index><SubIndex>2</SubIndex><BitLen>16</BitLen><Name>Ch2</Name><DataType>UINT</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2300</Index><SubIndex>3</SubIndex><BitLen>16</BitLen><Name>Ch3</Name><DataType>UINT</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2300</Index><SubIndex>4</SubIndex><BitLen>16</BitLen><Name>Ch4</Name><DataType>UINT</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2300</Index><SubIndex>5</SubIndex><BitLen>16</BitLen><Name>Ch5</Name><DataType>UINT</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2300</Index><SubIndex>6</SubIndex><BitLen>16</BitLen><Name>Ch6</Name><DataType>UINT</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2300</Index><SubIndex>7</SubIndex><BitLen>16</BitLen><Name>Ch7</Name><DataType>UINT</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2300</Index><SubIndex>8</SubIndex><BitLen>16</BitLen><Name>Ch8</Name><DataType>UINT</DataType></Entry>
+        </RxPdo>
+        <Profile>
+          <Dictionary>
+            <DataTypes>
+              <DataType><Name>UINT</Name><BitSize>16</BitSize></DataType>
+              <DataType><Name>USINT</Name><BitSize>8</BitSize></DataType>
+            </DataTypes>
+            <Objects>
+              <Object><Index>#x2300</Index><Name>Output Data</Name><Type>DT2300</Type><BitSize>136</BitSize><Flags><Access>rw</Access></Flags></Object>
+            </Objects>
+          </Dictionary>
+        </Profile>
+      </Module>
+      
+      <!-- ─── AOV8: Analog Output Voltage 8 Channels ───────────────────── -->
+      <Module>
+        <Type ModuleClass="AOV" ModuleIdent="#x20000006">AOV8</Type>
+        <Name>Analog Output Voltage 8 Channels</Name>
+        <RxPdo Fixed="false" Mandatory="1" Sm="2">
+          <Index DependOnSlot="true">#x1600</Index>
+          <Name>Analog Voltage Output(s)</Name>
+          <Entry><Index DependOnSlot="true">#x2300</Index><SubIndex>1</SubIndex><BitLen>16</BitLen><Name>Ch1</Name><DataType>UINT</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2300</Index><SubIndex>2</SubIndex><BitLen>16</BitLen><Name>Ch2</Name><DataType>UINT</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2300</Index><SubIndex>3</SubIndex><BitLen>16</BitLen><Name>Ch3</Name><DataType>UINT</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2300</Index><SubIndex>4</SubIndex><BitLen>16</BitLen><Name>Ch4</Name><DataType>UINT</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2300</Index><SubIndex>5</SubIndex><BitLen>16</BitLen><Name>Ch5</Name><DataType>UINT</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2300</Index><SubIndex>6</SubIndex><BitLen>16</BitLen><Name>Ch6</Name><DataType>UINT</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2300</Index><SubIndex>7</SubIndex><BitLen>16</BitLen><Name>Ch7</Name><DataType>UINT</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2300</Index><SubIndex>8</SubIndex><BitLen>16</BitLen><Name>Ch8</Name><DataType>UINT</DataType></Entry>
+        </RxPdo>
+        <Profile>
+          <Dictionary>
+            <DataTypes>
+              <DataType><Name>UINT</Name><BitSize>16</BitSize></DataType>
+              <DataType><Name>USINT</Name><BitSize>8</BitSize></DataType>
+            </DataTypes>
+            <Objects>
+              <Object><Index>#x2300</Index><Name>Output Data</Name><Type>DT2300</Type><BitSize>136</BitSize><Flags><Access>rw</Access></Flags></Object>
+            </Objects>
+          </Dictionary>
+        </Profile>
+      </Module>
+
+      <!-- ─── RTDY: 6-channel RTD PT100 Input ──────────────────────────── -->
+      <Module>
+        <Type ModuleClass="RTDY" ModuleIdent="#x20000007">RTDY</Type>
+        <Name>RTD PT100 6 Channels</Name>
+        <TxPdo Fixed="false" Mandatory="1" Sm="3">
+          <Index DependOnSlot="true">#x1A00</Index>
+          <Name>RTD PT100 Input(s)</Name>
+          <Entry><Index DependOnSlot="true">#x2200</Index><SubIndex>1</SubIndex><BitLen>16</BitLen><Name>TMP_Ch1</Name><DataType>INT</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2200</Index><SubIndex>2</SubIndex><BitLen>16</BitLen><Name>TMP_Ch2</Name><DataType>INT</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2200</Index><SubIndex>3</SubIndex><BitLen>16</BitLen><Name>TMP_Ch3</Name><DataType>INT</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2200</Index><SubIndex>4</SubIndex><BitLen>16</BitLen><Name>TMP_Ch4</Name><DataType>INT</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2200</Index><SubIndex>5</SubIndex><BitLen>16</BitLen><Name>TMP_Ch5</Name><DataType>INT</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2200</Index><SubIndex>6</SubIndex><BitLen>16</BitLen><Name>TMP_Ch6</Name><DataType>INT</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2200</Index><SubIndex>7</SubIndex><BitLen>16</BitLen><Name>RES_Ch1</Name><DataType>UINT</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2200</Index><SubIndex>8</SubIndex><BitLen>16</BitLen><Name>RES_Ch2</Name><DataType>UINT</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2200</Index><SubIndex>9</SubIndex><BitLen>16</BitLen><Name>RES_Ch3</Name><DataType>UINT</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2200</Index><SubIndex>10</SubIndex><BitLen>16</BitLen><Name>RES_Ch4</Name><DataType>UINT</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2200</Index><SubIndex>11</SubIndex><BitLen>16</BitLen><Name>RES_Ch5</Name><DataType>UINT</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2200</Index><SubIndex>12</SubIndex><BitLen>16</BitLen><Name>RES_Ch6</Name><DataType>UINT</DataType></Entry>
+        </TxPdo>
+        <Profile>
+          <Dictionary>
+            <DataTypes>
+              <DataType><Name>INT</Name><BitSize>16</BitSize></DataType>
+              <DataType><Name>USINT</Name><BitSize>8</BitSize></DataType>
+            </DataTypes>
+            <Objects>
+              <Object><Index>#x2200</Index><Name>Input Data</Name><Type>DT2200</Type><BitSize>200</BitSize><Flags><Access>ro</Access></Flags></Object>
+            </Objects>
+          </Dictionary>
+        </Profile>
+      </Module>
+
+      <!-- ─── RTDB: 6-channel RTD PT1000 Input ─────────────────────────── -->
+      <Module>
+        <Type ModuleClass="RTDB" ModuleIdent="#x20000008">RTDB</Type>
+        <Name>RTD PT1000 6 Channels</Name>
+        <TxPdo Fixed="false" Mandatory="1" Sm="3">
+          <Index DependOnSlot="true">#x1A00</Index>
+          <Name>RTD PT1000 Input(s)</Name>
+          <Entry><Index DependOnSlot="true">#x2200</Index><SubIndex>1</SubIndex><BitLen>16</BitLen><Name>TMP_Ch1</Name><DataType>INT</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2200</Index><SubIndex>2</SubIndex><BitLen>16</BitLen><Name>TMP_Ch2</Name><DataType>INT</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2200</Index><SubIndex>3</SubIndex><BitLen>16</BitLen><Name>TMP_Ch3</Name><DataType>INT</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2200</Index><SubIndex>4</SubIndex><BitLen>16</BitLen><Name>TMP_Ch4</Name><DataType>INT</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2200</Index><SubIndex>5</SubIndex><BitLen>16</BitLen><Name>TMP_Ch5</Name><DataType>INT</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2200</Index><SubIndex>6</SubIndex><BitLen>16</BitLen><Name>TMP_Ch6</Name><DataType>INT</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2200</Index><SubIndex>7</SubIndex><BitLen>16</BitLen><Name>RES_Ch1</Name><DataType>UINT</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2200</Index><SubIndex>8</SubIndex><BitLen>16</BitLen><Name>RES_Ch2</Name><DataType>UINT</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2200</Index><SubIndex>9</SubIndex><BitLen>16</BitLen><Name>RES_Ch3</Name><DataType>UINT</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2200</Index><SubIndex>10</SubIndex><BitLen>16</BitLen><Name>RES_Ch4</Name><DataType>UINT</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2200</Index><SubIndex>11</SubIndex><BitLen>16</BitLen><Name>RES_Ch5</Name><DataType>UINT</DataType></Entry>
+          <Entry><Index DependOnSlot="true">#x2200</Index><SubIndex>12</SubIndex><BitLen>16</BitLen><Name>RES_Ch6</Name><DataType>UINT</DataType></Entry>
+        </TxPdo>
+        <Profile>
+          <Dictionary>
+            <DataTypes>
+              <DataType><Name>INT</Name><BitSize>16</BitSize></DataType>
+              <DataType><Name>USINT</Name><BitSize>8</BitSize></DataType>
+            </DataTypes>
+            <Objects>
+              <Object><Index>#x2200</Index><Name>Input Data</Name><Type>DT2200</Type><BitSize>200</BitSize><Flags><Access>ro</Access></Flags></Object>
+            </Objects>
+          </Dictionary>
+        </Profile>
+      </Module>
+
+    </Modules>
+  </Descriptions>
+</EtherCATInfo>

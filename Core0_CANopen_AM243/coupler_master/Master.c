@@ -204,10 +204,10 @@ void UpdateOutputModules(void)
 
 void BuildProcessImage(void)
 {
-    uint16_t inOffset = 0;
+    uint16_t inOffset  = 0;
     uint16_t outOffset = 0;
 
-	app_ipc_sharemem_lock();
+    app_ipc_sharemem_lock();
 
     for (int i = 0; i < gSharedMem.IOCoupler_Devices.numberOfSlaves; i++)
     {
@@ -217,80 +217,97 @@ void BuildProcessImage(void)
         {
             case IO_DEVICE_TYPE_DI16:
                 s->offset_index = inOffset;
-                inOffset += 2;
+                inOffset += IO_DIGITAL_MODULE_BYTESIZE;     /* 2 */
                 break;
 
             case IO_DEVICE_TYPE_DO16:
                 s->offset_index = outOffset;
-                outOffset += 2;
+                outOffset += IO_DIGITAL_MODULE_BYTESIZE;    /* 2 */
                 break;
 
             case IO_DEVICE_TYPE_AIC8:
             case IO_DEVICE_TYPE_AIV8:
                 s->offset_index = inOffset;
-                inOffset += 16;
+                inOffset += IO_ANALOG_MODULE_BYTESIZE;      /* 16 */
                 break;
 
             case IO_DEVICE_TYPE_AOC8:
             case IO_DEVICE_TYPE_AOV8:
                 s->offset_index = outOffset;
-                outOffset += 16;
+                outOffset += IO_ANALOG_MODULE_BYTESIZE;     /* 16 */
+                break;
+
+            case IO_DEVICE_TYPE_RTDY:
+            case IO_DEVICE_TYPE_RTDB:
+                s->offset_index = inOffset;
+                inOffset += IO_RTD_MODULE_BYTESIZE;         /* 12 × 2 bytes */
+                break;
+
+            default:
                 break;
         }
     }
-	
-	app_ipc_sharemem_unlock();
+
+    app_ipc_sharemem_unlock();
 }
 
-/******************************************************************************
- * Sync EtherCAT + CANopen Input Process Image
- *
- * Copy data:
- *
- * CANopen Slave Object Dictionary
- *                ->
- * EtherCAT Input Process Image Buffer
- *
- ******************************************************************************/
 void GS_APP_SyncInputProcessImage(void)
 {
     uint16_t i;
     IO_SlaveInfo *pSlave;
 
-	app_ipc_sharemem_lock();
+    app_ipc_sharemem_lock();
 
-    for(i = 0U; i < gSharedMem.IOCoupler_Devices.numberOfSlaves; i++)
+    for (i = 0U; i < gSharedMem.IOCoupler_Devices.numberOfSlaves; i++)
     {
         pSlave = &gSharedMem.IOCoupler_Devices.slaveInfo[i];
 
-        /**********************************************************************
+        /*********************************************************************
          * DIGITAL INPUT MODULE
-         **********************************************************************/
-        if(pSlave->productCode == IO_DEVICE_TYPE_DI16)
+         *********************************************************************/
+        if (pSlave->productCode == IO_DEVICE_TYPE_DI16)
         {
-            if(IO_slave_data[i].d_ptr != NULL)
+            if (IO_slave_data[i].d_ptr != NULL)
             {
                 memcpy(
-                    (void *)&gSharedMem.buff_in[(pSlave->input_index-1)*IO_ANALOG_MODULE_BYTESIZE],
+                    (void *)&gSharedMem.buff_in[pSlave->offset_index],
                     IO_slave_data[i].d_ptr,
-                    IO_DIGITAL_MODULE_BYTESIZE);
+                    IO_DIGITAL_MODULE_BYTESIZE);             /* 2 bytes */
             }
         }
-        
-        /**********************************************************************
+
+        /*********************************************************************
          * ANALOG INPUT MODULE
-         **********************************************************************/
-        else if((pSlave->productCode == IO_DEVICE_TYPE_AIC8) ||
-                (pSlave->productCode == IO_DEVICE_TYPE_AIV8))
+         *********************************************************************/
+        else if ((pSlave->productCode == IO_DEVICE_TYPE_AIC8) ||
+                 (pSlave->productCode == IO_DEVICE_TYPE_AIV8))
         {
             uint16_t ch;
-
-            for(ch = 0U; ch < NUM_SUB_INDEX_DATA; ch++)
+            for (ch = 0U; ch < IO_ANALOG_CHANNEL_NUM; ch++)
             {
-                if(IO_slave_data[i].a_ptr[ch] != NULL)
+                if (IO_slave_data[i].a_ptr[ch] != NULL)
                 {
                     memcpy(
-                        (void *)&gSharedMem.buff_in[((pSlave->input_index-1)*IO_ANALOG_MODULE_BYTESIZE) + (ch * 2U)],
+                        (void *)&gSharedMem.buff_in[pSlave->offset_index + (ch * IO_ANALOG_BYTES_PER_CHANNEL)],
+                        IO_slave_data[i].a_ptr[ch],
+                        IO_ANALOG_BYTES_PER_CHANNEL);        /* 2 bytes per channel */
+                }
+            }
+        }
+
+        /*********************************************************************
+         * RTD INPUT MODULE  (was never handled — always wrote to buff_in[0])
+         *********************************************************************/
+        else if ((pSlave->productCode == IO_DEVICE_TYPE_RTDY) ||
+                 (pSlave->productCode == IO_DEVICE_TYPE_RTDB))
+        {
+            uint16_t ch;
+            for (ch = 0U; ch < 12U; ch++)
+            {
+                if (IO_slave_data[i].a_ptr[ch] != NULL)
+                {
+                    memcpy(
+                        (void *)&gSharedMem.buff_in[pSlave->offset_index + (ch * IO_ANALOG_BYTES_PER_CHANNEL)],
                         IO_slave_data[i].a_ptr[ch],
                         IO_ANALOG_BYTES_PER_CHANNEL);
                 }
@@ -298,66 +315,55 @@ void GS_APP_SyncInputProcessImage(void)
         }
     }
 
-	app_ipc_sharemem_unlock();
+    app_ipc_sharemem_unlock();
 }
 
-/******************************************************************************
- * Sync EtherCAT Output Process Image
- *
- * Copy data:
- *
- * EtherCAT Output Process Image Buffer
- *                ->
- * CANopen Slave Object Dictionary
- *
- ******************************************************************************/
 void GS_APP_SyncOutputProcessImage(void)
 {
     uint16_t i;
     IO_SlaveInfo *pSlave;
 
-	app_ipc_sharemem_lock();
+    app_ipc_sharemem_lock();
 
-    for(i = 0U; i < gSharedMem.IOCoupler_Devices.numberOfSlaves; i++)
+    for (i = 0U; i < gSharedMem.IOCoupler_Devices.numberOfSlaves; i++)
     {
         pSlave = &gSharedMem.IOCoupler_Devices.slaveInfo[i];
 
-        /**********************************************************************
+        /*********************************************************************
          * DIGITAL OUTPUT MODULE
-         **********************************************************************/
-        if(pSlave->productCode == IO_DEVICE_TYPE_DO16)
+         *********************************************************************/
+        if (pSlave->productCode == IO_DEVICE_TYPE_DO16)
         {
-            if(IO_slave_data[i].d_ptr != NULL)
+            if (IO_slave_data[i].d_ptr != NULL)
             {
                 memcpy(
                     IO_slave_data[i].d_ptr,
-                    (const void *)&gSharedMem.buff_out[(pSlave->output_index-1)*IO_ANALOG_MODULE_BYTESIZE],
-                    IO_DIGITAL_MODULE_BYTESIZE);
+                    (const void *)&gSharedMem.buff_out[pSlave->offset_index],
+                    IO_DIGITAL_MODULE_BYTESIZE);             /* 2 bytes */
             }
         }
 
-        /**********************************************************************
+        /*********************************************************************
          * ANALOG OUTPUT MODULE
-         **********************************************************************/
-        else if((pSlave->productCode == IO_DEVICE_TYPE_AOC8) ||
-                (pSlave->productCode == IO_DEVICE_TYPE_AOV8))
+         *********************************************************************/
+        else if ((pSlave->productCode == IO_DEVICE_TYPE_AOC8) ||
+                 (pSlave->productCode == IO_DEVICE_TYPE_AOV8))
         {
             uint16_t ch;
-
-            for(ch = 0U; ch < NUM_SUB_INDEX_DATA; ch++)
+            for (ch = 0U; ch < IO_ANALOG_CHANNEL_NUM; ch++)
             {
-                if(IO_slave_data[i].a_ptr[ch] != NULL)
+                if (IO_slave_data[i].a_ptr[ch] != NULL)
                 {
                     memcpy(
                         IO_slave_data[i].a_ptr[ch],
-                        (const void *)&gSharedMem.buff_out[((pSlave->output_index-1)*IO_ANALOG_MODULE_BYTESIZE) + (ch * 2U)],
+                        (const void *)&gSharedMem.buff_out[pSlave->offset_index + (ch * IO_ANALOG_BYTES_PER_CHANNEL)],
                         IO_ANALOG_BYTES_PER_CHANNEL);
                 }
             }
         }
     }
 
-	app_ipc_sharemem_unlock();
+    app_ipc_sharemem_unlock();
 }
 
 #if (ACTIVE_PROTOCOL == IOCOUPLER_MODBUSTCP)

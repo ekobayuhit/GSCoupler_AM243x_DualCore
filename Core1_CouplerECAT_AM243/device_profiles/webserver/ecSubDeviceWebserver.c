@@ -74,6 +74,7 @@
 #include <ecSlvApi.h>
 
 #include "ipc_shareMem.h"
+#include "mdp.h"
 
 #if !(defined MBXMEM)
 #define MBXMEM
@@ -102,525 +103,6 @@ extern volatile ipc_data_t gSharedMem;
 
 static void EC_SLV_APP_SS_applicationRun(void *pAppCtxt_p);
 
-/******************************************************************************
- * Helper : Write U16 Object Entry
- ******************************************************************************/
-static EC_API_EError_t SetObjEntryU16(
-    EC_API_SLV_SHandle_t *ptSlave,
-    uint16_t index,
-    uint8_t subIndex,
-    uint16_t value)
-{
-    EC_API_SLV_SCoE_ObjEntry_t *ptEntry = NULL;
-    EC_API_EError_t error;
-
-    error = (EC_API_EError_t)
-        EC_API_SLV_CoE_getObjectEntry(
-            ptSlave,
-            index,
-            subIndex,
-            &ptEntry);
-
-    if(error != EC_API_eERR_NONE)
-    {
-        OSAL_printf(
-            "SetObjEntryU16 Get Entry Failed idx=0x%04X sub=0x%02X err=0x%08X\r\n",
-            index,
-            subIndex,
-            error);
-
-        return error;
-    }
-
-    error = (EC_API_EError_t)
-        EC_API_SLV_CoE_setObjectEntryData(
-            ptSlave,
-            ptEntry,
-            sizeof(value),
-            &value);
-
-    if(error != EC_API_eERR_NONE)
-    {
-        OSAL_printf(
-            "SetObjEntryU16 Set Failed idx=0x%04X sub=0x%02X err=0x%08X\r\n",
-            index,
-            subIndex,
-            error);
-    }
-
-    return error;
-}
-
-/******************************************************************************
- * Helper : Get PDO Offset
- ******************************************************************************/
-static EC_API_EError_t GetPdoOffset(
-    EC_API_SLV_SHandle_t *ptSlave,
-    EC_API_SLV_Pdo_t *ptPdo,
-    uint16_t *pOffset)
-{
-    if((ptSlave == NULL) || (ptPdo == NULL) || (pOffset == NULL))
-    {
-        return EC_API_eERR_INVALID;
-    }
-
-    EC_API_SLV_PDO_getOffset(
-        ptSlave,
-        ptPdo,
-        pOffset);
-
-    return EC_API_eERR_NONE;
-}
-
-/******************************************************************************
- * Helper : Get PDO Length
- ******************************************************************************/
-static EC_API_EError_t GetPdoLength(
-    EC_API_SLV_SHandle_t *ptSlave,
-    EC_API_SLV_Pdo_t *ptPdo,
-    uint16_t *pLength)
-{
-    if((ptSlave == NULL) || (ptPdo == NULL) || (pLength == NULL))
-    {
-        return EC_API_eERR_INVALID;
-    }
-
-    EC_API_SLV_PDO_getLength(
-        ptSlave,
-        ptPdo,
-        pLength);
-
-    return EC_API_eERR_NONE;
-}
-
-/******************************************************************************
- * Initialize Module Database
- ******************************************************************************/
-static void GS_APP_InitModuleTable(
-    EC_SLV_APP_SS_Application_t *pApp)
-{
-    uint16_t i;
-
-    if(pApp == NULL)
-    {
-        return;
-    }
-
-    pApp->moduleCount = 0U;
-
-    for(i = 0U; i < MAX_IO_DEVICES; i++)
-    {
-        pApp->moduleList[i].slot = i;
-
-        pApp->moduleList[i].productCode = 0U;
-
-        pApp->moduleList[i].state =
-            GS_MODULE_STATE_OFFLINE;
-
-        pApp->moduleList[i].errorCode = 0U;
-
-        pApp->moduleList[i].modulePresent = false;
-
-        pApp->moduleList[i].inputSize = 0U;
-        pApp->moduleList[i].outputSize = 0U;
-
-        pApp->moduleList[i].txPdoOffset = 0U;
-        pApp->moduleList[i].txPdoLength = 0U;
-
-        pApp->moduleList[i].rxPdoOffset = 0U;
-        pApp->moduleList[i].rxPdoLength = 0U;
-
-        memset(
-            pApp->moduleList[i].moduleName,
-            0,
-            sizeof(pApp->moduleList[i].moduleName));
-
-        memset(
-            pApp->moduleList[i].diagnosticText,
-            0,
-            sizeof(pApp->moduleList[i].diagnosticText));
-    }
-}
-
-/******************************************************************************
- * Update Module Database
- ******************************************************************************/
-static EC_API_EError_t GS_APP_UpdateModuleDatabase(
-    EC_SLV_APP_SS_Application_t *pApp)
-{
-    uint16_t i;
-
-    if(pApp == NULL)
-    {
-        return EC_API_eERR_INVALID;
-    }
-
-    /**********************************************************************
-     * Update module count
-     **********************************************************************/
-    pApp->moduleCount =
-        gSharedMem.IOCoupler_Devices.numberOfSlaves;
-
-    if(pApp->moduleCount > MAX_IO_DEVICES)
-    {
-        pApp->moduleCount = MAX_IO_DEVICES;
-    }
-
-    /**********************************************************************
-     * Build module database
-     **********************************************************************/
-    for(i = 0U; i < pApp->moduleCount; i++)
-    {
-        IO_SlaveInfo *pSlaveInfo;
-
-        pSlaveInfo =
-            &gSharedMem.IOCoupler_Devices.slaveInfo[i];
-
-        pApp->moduleList[i].slot = i;
-
-        pApp->moduleList[i].productCode =
-            (uint16_t)pSlaveInfo->productCode;
-
-        pApp->moduleList[i].state =
-            GS_MODULE_STATE_OK;
-
-        pApp->moduleList[i].errorCode = 0U;
-
-        pApp->moduleList[i].modulePresent = true;
-
-        /******************************************************************
-         * Module name
-         ******************************************************************/
-        switch(pSlaveInfo->productCode)
-        {
-            case IO_DEVICE_TYPE_DI16:
-
-                strncpy(
-                    pApp->moduleList[i].moduleName,
-                    "DI16",
-                    GS_MODULE_NAME_LENGTH - 1U);
-
-                break;
-
-            case IO_DEVICE_TYPE_DO16:
-
-                strncpy(
-                    pApp->moduleList[i].moduleName,
-                    "DO16",
-                    GS_MODULE_NAME_LENGTH - 1U);
-
-                break;
-
-            case IO_DEVICE_TYPE_AIC8:
-
-                strncpy(
-                    pApp->moduleList[i].moduleName,
-                    "AIC8",
-                    GS_MODULE_NAME_LENGTH - 1U);
-
-                break;
-
-            case IO_DEVICE_TYPE_AIV8:
-
-                strncpy(
-                    pApp->moduleList[i].moduleName,
-                    "AIV8",
-                    GS_MODULE_NAME_LENGTH - 1U);
-
-                break;
-
-            case IO_DEVICE_TYPE_AOC8:
-
-                strncpy(
-                    pApp->moduleList[i].moduleName,
-                    "AOC8",
-                    GS_MODULE_NAME_LENGTH - 1U);
-
-                break;
-
-            case IO_DEVICE_TYPE_AOV8:
-
-                strncpy(
-                    pApp->moduleList[i].moduleName,
-                    "AOV8",
-                    GS_MODULE_NAME_LENGTH - 1U);
-
-                break;
-
-            default:
-
-                strncpy(
-                    pApp->moduleList[i].moduleName,
-                    "UNKNOWN",
-                    GS_MODULE_NAME_LENGTH - 1U);
-
-                pApp->moduleList[i].state =
-                    GS_MODULE_STATE_WARNING;
-
-                break;
-        }
-
-        /******************************************************************
-         * Process data sizes
-         ******************************************************************/
-        // pApp->moduleList[i].inputSize =
-        //     pSlaveInfo->input_size;
-
-        // pApp->moduleList[i].outputSize =
-        //     pSlaveInfo->output_size;
-
-        /******************************************************************
-         * TX PDO (EtherCAT Slave -> Master)
-         ******************************************************************/
-        // pApp->moduleList[i].txPdoOffset =
-        //     pSlaveInfo->input_offset;
-
-        // pApp->moduleList[i].txPdoLength =
-        //     pSlaveInfo->input_size;
-
-        /******************************************************************
-         * RX PDO (EtherCAT Master -> Slave)
-         ******************************************************************/
-        // pApp->moduleList[i].rxPdoOffset =
-        //     pSlaveInfo->output_offset;
-
-        // pApp->moduleList[i].rxPdoLength =
-        //     pSlaveInfo->output_size;
-
-        /******************************************************************
-         * Diagnostic text
-         ******************************************************************/
-        strncpy(
-            pApp->moduleList[i].diagnosticText,
-            "Module OK",
-            GS_DIAG_TEXT_LENGTH - 1U);
-    }
-
-    return EC_API_eERR_NONE;
-}
-
-// static EC_API_EError_t GS_APP_CreateModuleTableObjects(
-//     EC_SLV_APP_SS_Application_t *pApp)
-// {
-//     EC_API_SLV_SHandle_t       *ptSubDevice;
-//     EC_API_EError_t error;
-//     uint16_t        i;
-//     uint16_t        objIndex;
-
-//     ptSubDevice = pApp->ptEcSlvApi;
-
-//     for(i = 0U; i < MAX_IO_DEVICES; i++)
-//     {
-//         objIndex = (uint16_t)(0x3000U + i);
-
-//         error = EC_API_SLV_CoE_odAddRecord(
-//             ptSubDevice,
-//             objIndex,
-//             "ModuleInfo",
-//             NULL,
-//             NULL,
-//             NULL,
-//             NULL,
-//             &pApp->ptModuleInfo3000[i]);
-
-//         if(error != EC_API_eERR_NONE)
-//         {
-//             return error;
-//         }
-
-//         /*
-//          * Add SubIndexes
-//          */
-
-//         error = (EC_API_EError_t)
-//             EC_API_SLV_CoE_configRecordSubIndex(
-//                 ptSubDevice,
-//                  pApp->ptModuleInfo3000[i],
-//                 1U,
-//                 "productCode",
-//                 DEFTYPE_UNSIGNED16,
-//                 16U,
-//                 ACCESS_READ);
-
-//         error = (EC_API_EError_t)
-//             EC_API_SLV_CoE_configRecordSubIndex(
-//                 ptSubDevice,
-//                  pApp->ptModuleInfo3000[i],
-//                 2U,
-//                 "State",
-//                 DEFTYPE_UNSIGNED16,
-//                 16U,
-//                 ACCESS_READ);
-
-//         error = (EC_API_EError_t)
-//             EC_API_SLV_CoE_configRecordSubIndex(
-//                 ptSubDevice,
-//                  pApp->ptModuleInfo3000[i],
-//                 3U,
-//                 "ErrorCode",
-//                 DEFTYPE_UNSIGNED16,
-//                 16U,
-//                 ACCESS_READ);
-
-//         error = (EC_API_EError_t)
-//             EC_API_SLV_CoE_configRecordSubIndex(
-//                 ptSubDevice,
-//                  pApp->ptModuleInfo3000[i],
-//                 4U,
-//                 "TxPdoOffset",
-//                 DEFTYPE_UNSIGNED16,
-//                 16U,
-//                 ACCESS_READ);
-
-//         error = (EC_API_EError_t)
-//             EC_API_SLV_CoE_configRecordSubIndex(
-//                 ptSubDevice,
-//                 pApp->ptModuleInfo3000[i],
-//                 5U,
-//                 "TxPdoLength",
-//                 DEFTYPE_UNSIGNED16,
-//                 16U,
-//                 ACCESS_READ);
-
-//         error = (EC_API_EError_t)
-//             EC_API_SLV_CoE_configRecordSubIndex(
-//                 ptSubDevice,
-//                  pApp->ptModuleInfo3000[i],
-//                 6U,
-//                 "RxPdoOffset",
-//                 DEFTYPE_UNSIGNED16,
-//                 16U,
-//                 ACCESS_READ);
-
-//         error = (EC_API_EError_t)
-//             EC_API_SLV_CoE_configRecordSubIndex(
-//                 ptSubDevice,
-//                  pApp->ptModuleInfo3000[i],
-//                 7U,
-//                 "RxPdoLength",
-//                 DEFTYPE_UNSIGNED16,
-//                 16U,
-//                 ACCESS_READ);
-//     }
-
-//     return EC_API_eERR_NONE;
-// }
-/******************************************************************************
- * Export Module Table To EtherCAT Objects
- *
- * Object Layout:
- *
- * 0x3000 + slot
- *
- * SubIndex:
- * 1 -> Module ID
- * 2 -> State
- * 3 -> Error Code
- * 4 -> TX PDO Offset
- * 5 -> TX PDO Length
- * 6 -> RX PDO Offset
- * 7 -> RX PDO Length
- *
- ******************************************************************************/
-static EC_API_EError_t GS_APP_UpdateModuleObjects(
-    EC_SLV_APP_SS_Application_t *pApp)
-{
-    EC_API_EError_t      error;
-    EC_API_SLV_SHandle_t *ptSlave;
-    uint16_t             objIndex;
-    uint16_t             i;
-
-    if(pApp == NULL)
-    {
-        return EC_API_eERR_INVALID;
-    }
-
-    ptSlave = pApp->ptEcSlvApi;
-
-    for(i = 0U; i < pApp->moduleCount; i++)
-    {
-        objIndex = (uint16_t)(0x3000U + i);
-
-        error = SetObjEntryU16(
-            ptSlave,
-            objIndex,
-            1U,
-            pApp->moduleList[i].productCode);
-
-        if(error != EC_API_eERR_NONE)
-        {
-            return error;
-        }
-
-        error = SetObjEntryU16(
-            ptSlave,
-            objIndex,
-            2U,
-            (uint16_t)pApp->moduleList[i].state);
-
-        if(error != EC_API_eERR_NONE)
-        {
-            return error;
-        }
-
-        error = SetObjEntryU16(
-            ptSlave,
-            objIndex,
-            3U,
-            (uint16_t)pApp->moduleList[i].errorCode);
-
-        if(error != EC_API_eERR_NONE)
-        {
-            return error;
-        }
-
-        error = SetObjEntryU16(
-            ptSlave,
-            objIndex,
-            4U,
-            pApp->moduleList[i].txPdoOffset);
-
-        if(error != EC_API_eERR_NONE)
-        {
-            return error;
-        }
-
-        error = SetObjEntryU16(
-            ptSlave,
-            objIndex,
-            5U,
-            pApp->moduleList[i].txPdoLength);
-
-        if(error != EC_API_eERR_NONE)
-        {
-            return error;
-        }
-
-        error = SetObjEntryU16(
-            ptSlave,
-            objIndex,
-            6U,
-            pApp->moduleList[i].rxPdoOffset);
-
-        if(error != EC_API_eERR_NONE)
-        {
-            return error;
-        }
-
-        error = SetObjEntryU16(
-            ptSlave,
-            objIndex,
-            7U,
-            pApp->moduleList[i].rxPdoLength);
-
-        if(error != EC_API_eERR_NONE)
-        {
-            return error;
-        }
-    }
-
-    return EC_API_eERR_NONE;
-}
 /*-----------------------------------------------------------------------------------------
 ------
 ------     application specific functions
@@ -703,6 +185,15 @@ static EC_API_EError_t EC_SLV_APP_SS_populateSlaveInfo(
     }
     ptSubDevice = pApplicationInstance_p->ptEcSlvApi;
 
+    error = (EC_API_EError_t)EC_API_SLV_setDeviceType(ptSubDevice, EC_API_SLV_eDT_MODULAR_DEVICE);
+    if (error != EC_API_eERR_NONE)
+    {
+        OSAL_printf("%s:%d Error code: 0x%08x\r\n", __func__, __LINE__, error);
+        /* @cppcheck_justify{misra-c2012-15.1} goto is used to assure single point of exit */
+        /* cppcheck-suppress misra-c2012-15.1 */
+        goto Exit;
+    }
+
     error = (EC_API_EError_t)EC_API_SLV_setVendorId(ptSubDevice, ECAT_VENDORID);
     if (error != EC_API_eERR_NONE)
     {
@@ -774,24 +265,6 @@ static EC_API_EError_t EC_SLV_APP_SS_populateSlaveInfo(
         goto Exit;
     }
 
-    /**********************************************************************
-     * Initialize Module Database
-     **********************************************************************/
-
-    GS_APP_InitModuleTable(pApplicationInstance_p);
-
-    error = GS_APP_UpdateModuleDatabase(
-        pApplicationInstance_p);
-
-    if (error != EC_API_eERR_NONE)
-    {
-        OSAL_printf(
-            "GS_APP_UpdateModuleDatabase Failed 0x%08X\r\n",
-            error);
-
-        goto Exit;
-    }
-
     /* Former Project.h */
     
     error = (EC_API_EError_t)EC_API_SLV_setPDOSize(ptSubDevice, EC_MAX_PD_LEN, EC_MAX_PD_LEN);
@@ -840,256 +313,69 @@ static EC_API_EError_t EC_SLV_APP_SS_populateSlaveInfo(
         goto Exit;
     }
 
-    error = (EC_API_EError_t)EC_API_SLV_setSyncManConfig(
-        ptSubDevice,
-        0,
-        EC_MBXOUT_START,
-        EC_MBXOUT_DEF_LENGTH,
-        EC_MBXOUT_CONTROLREG,
-        EC_MBXOUT_ENABLE);
-    if (error != EC_API_eERR_NONE)
-    {
-        OSAL_printf("%s:%d Error code: 0x%08x\r\n", __func__, __LINE__, error);
-        /* @cppcheck_justify{misra-c2012-15.1} goto is used to assure single point of exit */
-        /* cppcheck-suppress misra-c2012-15.1 */
-        goto Exit;
-    }
-
-    error = (EC_API_EError_t)EC_API_SLV_setSyncManConfig(
-        ptSubDevice,
-        1,
-        EC_MBXIN_START,
-        EC_MBXIN_DEF_LENGTH,
-        EC_MBXIN_CONTROLREG,
-        EC_MBXIN_ENABLE);
-    if (error != EC_API_eERR_NONE)
-    {
-        OSAL_printf("%s:%d Error code: 0x%08x\r\n", __func__, __LINE__, error);
-        /* @cppcheck_justify{misra-c2012-15.1} goto is used to assure single point of exit */
-        /* cppcheck-suppress misra-c2012-15.1 */
-        goto Exit;
-    }
-
-    error = (EC_API_EError_t)EC_API_SLV_setSyncManConfig(
-        ptSubDevice,
-        2,
-        EC_OUTPUT_START,
-        EC_OUTPUT_DEF_LENGTH,
-        EC_OUTPUT_CONTROLREG,
-        EC_OUTPUT_ENABLE);
-    if (error != EC_API_eERR_NONE)
-    {
-        OSAL_printf("%s:%d Error code: 0x%08x\r\n", __func__, __LINE__, error);
-        /* @cppcheck_justify{misra-c2012-15.1} goto is used to assure single point of exit */
-        /* cppcheck-suppress misra-c2012-15.1 */
-        goto Exit;
-    }
-
-    error = (EC_API_EError_t)EC_API_SLV_setSyncManConfig(
-        ptSubDevice,
-        3,
-        EC_INPUT_START,
-        EC_INPUT_DEF_LENGTH,
-        EC_INPUT_CONTROLREG,
-        EC_INPUT_ENABLE);
-    if (error != EC_API_eERR_NONE)
-    {
-        OSAL_printf("%s:%d Error code: 0x%08x\r\n", __func__, __LINE__, error);
-        /* @cppcheck_justify{misra-c2012-15.1} goto is used to assure single point of exit */
-        /* cppcheck-suppress misra-c2012-15.1 */
-        goto Exit;
-    }
-
-    /* /Former Project.h */
-
-    /**********************************************************************
-     * Export Module Information Objects
-     **********************************************************************/
-
-    // GS_APP_CreateModuleTableObjects(pApplicationInstance_p);
-
-    // error = GS_APP_UpdateModuleObjects(
-    //     pApplicationInstance_p);
-
+    // error = (EC_API_EError_t)EC_API_SLV_setSyncManConfig(
+    //     ptSubDevice,
+    //     0,
+    //     EC_MBXOUT_START,
+    //     EC_MBXOUT_DEF_LENGTH,
+    //     EC_MBXOUT_CONTROLREG,
+    //     EC_MBXOUT_ENABLE);
     // if (error != EC_API_eERR_NONE)
     // {
-    //     OSAL_printf(
-    //         "GS_APP_UpdateModuleObjects Failed 0x%08X\r\n",
-    //         error);
-
+    //     OSAL_printf("%s:%d Error code: 0x%08x\r\n", __func__, __LINE__, error);
+    //     /* @cppcheck_justify{misra-c2012-15.1} goto is used to assure single point of exit */
+    //     /* cppcheck-suppress misra-c2012-15.1 */
     //     goto Exit;
     // }
 
-    error = EC_API_eERR_NONE;
-Exit:
-    return error;
-}
+    // error = (EC_API_EError_t)EC_API_SLV_setSyncManConfig(
+    //     ptSubDevice,
+    //     1,
+    //     EC_MBXIN_START,
+    //     EC_MBXIN_DEF_LENGTH,
+    //     EC_MBXIN_CONTROLREG,
+    //     EC_MBXIN_ENABLE);
+    // if (error != EC_API_eERR_NONE)
+    // {
+    //     OSAL_printf("%s:%d Error code: 0x%08x\r\n", __func__, __LINE__, error);
+    //     /* @cppcheck_justify{misra-c2012-15.1} goto is used to assure single point of exit */
+    //     /* cppcheck-suppress misra-c2012-15.1 */
+    //     goto Exit;
+    // }
 
-static EC_API_EError_t GS_EC_SLV_APP_SS_populateIOObjects(
-    EC_SLV_APP_SS_Application_t *pApplicationInstance)
-{
-    EC_API_EError_t       error = EC_API_eERR_INVALID;
-    EC_API_SLV_SHandle_t *ptSubDevice;
+    // error = (EC_API_EError_t)EC_API_SLV_setSyncManConfig(
+    //     ptSubDevice,
+    //     2,
+    //     EC_OUTPUT_START,
+    //     EC_OUTPUT_DEF_LENGTH,
+    //     EC_OUTPUT_CONTROLREG,
+    //     EC_OUTPUT_ENABLE);
+    // if (error != EC_API_eERR_NONE)
+    // {
+    //     OSAL_printf("%s:%d Error code: 0x%08x\r\n", __func__, __LINE__, error);
+    //     /* @cppcheck_justify{misra-c2012-15.1} goto is used to assure single point of exit */
+    //     /* cppcheck-suppress misra-c2012-15.1 */
+    //     goto Exit;
+    // }
 
-    const uint32_t objIndexInput  = 0x2200U;
-    const uint32_t objIndexOutput = 0x2300U;
+    // error = (EC_API_EError_t)EC_API_SLV_setSyncManConfig(
+    //     ptSubDevice,
+    //     3,
+    //     EC_INPUT_START,
+    //     EC_INPUT_DEF_LENGTH,
+    //     EC_INPUT_CONTROLREG,
+    //     EC_INPUT_ENABLE);
+    // if (error != EC_API_eERR_NONE)
+    // {
+    //     OSAL_printf("%s:%d Error code: 0x%08x\r\n", __func__, __LINE__, error);
+    //     /* @cppcheck_justify{misra-c2012-15.1} goto is used to assure single point of exit */
+    //     /* cppcheck-suppress misra-c2012-15.1 */
+    //     goto Exit;
+    // }
 
-    uint16_t i;
-    uint16_t ch;
-
-    if(pApplicationInstance == NULL)
-    {
-        goto Exit;
-    }
-
-    ptSubDevice = pApplicationInstance->ptEcSlvApi;
-
-    /* ========================================================= */
-    /* Create IO Objects                                         */
-    /* ========================================================= */
-
-    for(i = 0U; i < MAX_IO_DEVICES; i++)
-    {
-        char outputName[32];
-        char inputName[32];
-
-        snprintf(
-            outputName,
-            sizeof(outputName),
-            "Output Slot %u",
-            i + 1U);
-
-        snprintf(
-            inputName,
-            sizeof(inputName),
-            "Input Slot %u",
-            i + 1U);
-
-        /* ===================================================== */
-        /* Create OUTPUT Record                                  */
-        /* ===================================================== */
-
-        error = (EC_API_EError_t)
-            EC_API_SLV_CoE_odAddRecord(
-                ptSubDevice,
-                (uint16_t)(objIndexOutput + i),
-                outputName,
-                NULL,
-                NULL,
-                NULL,
-                NULL,
-                &pApplicationInstance->ptOutput[i]);
-
-        if(error != EC_API_eERR_NONE)
-        {
-            OSAL_printf(
-                "Create Output Object 0x%04X Error: 0x%08X\r\n",
-                (uint16_t)(objIndexOutput + i),
-                error);
-
-            goto Exit;
-        }
-
-        /*
-         * Configure Output Channels
-         */
-        for(ch = 0U; ch < NUM_SUB_INDEX_DATA; ch++)
-        {
-            char channelName[32];
-
-            snprintf(
-                channelName,
-                sizeof(channelName),
-                "Channel %u",
-                ch + 1U);
-
-            error = (EC_API_EError_t)
-                EC_API_SLV_CoE_configRecordSubIndex(
-                    ptSubDevice,
-                    pApplicationInstance->ptOutput[i],
-                    (uint8_t)(ch + 1U),
-                    channelName,
-                    DEFTYPE_UNSIGNED16,
-                    16U,
-                    ACCESS_READWRITE |
-                    OBJACCESS_RXPDOMAPPING);
-
-            if(error != EC_API_eERR_NONE)
-            {
-                OSAL_printf(
-                    "Config Output 0x%04X:%u Error: 0x%08X\r\n",
-                    (uint16_t)(objIndexOutput + i),
-                    (uint8_t)(ch + 1U),
-                    error);
-
-                goto Exit;
-            }
-        }
-
-        /* ===================================================== */
-        /* Create INPUT Record                                   */
-        /* ===================================================== */
-
-        error = (EC_API_EError_t)
-            EC_API_SLV_CoE_odAddRecord(
-                ptSubDevice,
-                (uint16_t)(objIndexInput + i),
-                inputName,
-                NULL,
-                NULL,
-                NULL,
-                NULL,
-                &pApplicationInstance->ptInput[i]);
-
-        if(error != EC_API_eERR_NONE)
-        {
-            OSAL_printf(
-                "Create Input Object 0x%04X Error: 0x%08X\r\n",
-                (uint16_t)(objIndexInput + i),
-                error);
-
-            goto Exit;
-        }
-
-        /*
-         * Configure Input Channels
-         */
-        for(ch = 0U; ch < NUM_SUB_INDEX_DATA; ch++)
-        {
-            char channelName[32];
-
-            snprintf(
-                channelName,
-                sizeof(channelName),
-                "Channel %u",
-                ch + 1U);
-
-            error = (EC_API_EError_t)
-                EC_API_SLV_CoE_configRecordSubIndex(
-                    ptSubDevice,
-                    pApplicationInstance->ptInput[i],
-                    (uint8_t)(ch + 1U),
-                    channelName,
-                    DEFTYPE_UNSIGNED16,
-                    16U,
-                    ACCESS_READ |
-                    OBJACCESS_TXPDOMAPPING);
-
-            if(error != EC_API_eERR_NONE)
-            {
-                OSAL_printf(
-                    "Config Input 0x%04X:%u Error: 0x%08X\r\n",
-                    (uint16_t)(objIndexInput + i),
-                    (uint8_t)(ch + 1U),
-                    error);
-
-                goto Exit;
-            }
-        }
-    }
+    /* /Former Project.h */
 
     error = EC_API_eERR_NONE;
-
 Exit:
     return error;
 }
@@ -1253,581 +539,6 @@ static EC_API_EError_t EC_SLV_APP_populateFSoEObject(EC_SLV_APP_SS_Application_t
     }
 
     error = EC_API_eERR_NONE;
-Exit:
-    return error;
-}
-
-/*
- * ================================================================
- *  EtherCAT Modular IO Coupler Diagnostic Objects
- *
- *  Object Layout
- *
- *  0x2100 : Coupler Information
- *  0x2200 : Input Process Data
- *  0x2300 : Output Process Data
- *  0x2400 : Module Type Table
- *  0x2500 : Module Status Table
- *  0x2600 : Diagnostic Information
- *
- * ================================================================
- */
-// static EC_API_EError_t GS_EC_SLV_APP_SS_populateDiagnosticObjects(
-//     EC_SLV_APP_SS_Application_t *pApplicationInstance_p)
-// {
-//     EC_API_EError_t       error = EC_API_eERR_INVALID;
-//     EC_API_SLV_SHandle_t *ptSubDevice;
-
-//     uint16_t slot;
-
-//     if (!pApplicationInstance_p)
-//     {
-//         goto Exit;
-//     }
-
-//     ptSubDevice = pApplicationInstance_p->ptEcSlvApi;
-
-//     /* ========================================================= */
-//     /* 0x2100 - Coupler Information                              */
-//     /* ========================================================= */
-
-//     error = (EC_API_EError_t)
-//         EC_API_SLV_CoE_odAddRecord(
-//             ptSubDevice,
-//             0x2100,
-//             "Coupler Information",
-//             NULL,
-//             NULL,
-//             NULL,
-//             NULL,
-//             &pApplicationInstance_p->ptCoupler2100);
-
-//     if (error != EC_API_eERR_NONE)
-//     {
-//         OSAL_printf(
-//             "Create 0x2100 Error: 0x%08x\r\n",
-//             error);
-
-//         goto Exit;
-//     }
-
-//     /*
-//      * SubIndex 1
-//      * Installed Module Count
-//      */
-
-//     error = (EC_API_EError_t)
-//         EC_API_SLV_CoE_configRecordSubIndex(
-//             ptSubDevice,
-//             pApplicationInstance_p->ptCoupler2100,
-//             1,
-//             "Installed Module Count",
-//             DEFTYPE_UNSIGNED8,
-//             8,
-//             ACCESS_READ);
-
-//     if (error != EC_API_eERR_NONE)
-//     {
-//         goto Exit;
-//     }
-
-//     /*
-//      * SubIndex 2
-//      * Input Process Data Size
-//      */
-
-//     error = (EC_API_EError_t)
-//         EC_API_SLV_CoE_configRecordSubIndex(
-//             ptSubDevice,
-//             pApplicationInstance_p->ptCoupler2100,
-//             2,
-//             "Input Process Data Size (Bytes)",
-//             DEFTYPE_UNSIGNED16,
-//             16,
-//             ACCESS_READ);
-
-//     if (error != EC_API_eERR_NONE)
-//     {
-//         goto Exit;
-//     }
-
-//     /*
-//      * SubIndex 3
-//      * Output Process Data Size
-//      */
-
-//     error = (EC_API_EError_t)
-//         EC_API_SLV_CoE_configRecordSubIndex(
-//             ptSubDevice,
-//             pApplicationInstance_p->ptCoupler2100,
-//             3,
-//             "Output Process Data Size (Bytes)",
-//             DEFTYPE_UNSIGNED16,
-//             16,
-//             ACCESS_READ);
-
-//     if (error != EC_API_eERR_NONE)
-//     {
-//         goto Exit;
-//     }
-
-//     /*
-//      * SubIndex 4
-//      * Coupler Status
-//      */
-
-//     error = (EC_API_EError_t)
-//         EC_API_SLV_CoE_configRecordSubIndex(
-//             ptSubDevice,
-//             pApplicationInstance_p->ptCoupler2100,
-//             4,
-//             "Coupler Status",
-//             DEFTYPE_UNSIGNED16,
-//             16,
-//             ACCESS_READ);
-
-//     if (error != EC_API_eERR_NONE)
-//     {
-//         goto Exit;
-//     }
-
-//     /* ========================================================= */
-//     /* 0x2400 - Module Type Table                                */
-//     /* ========================================================= */
-
-//     error = (EC_API_EError_t)
-//         EC_API_SLV_CoE_odAddRecord(
-//             ptSubDevice,
-//             0x2400,
-//             "Module Type Table",
-//             NULL,
-//             NULL,
-//             NULL,
-//             NULL,
-//             &pApplicationInstance_p->ptModuleType2400);
-
-//     if (error != EC_API_eERR_NONE)
-//     {
-//         OSAL_printf(
-//             "Create 0x2400 Error: 0x%08x\r\n",
-//             error);
-
-//         goto Exit;
-//     }
-
-//     /*
-//      * Create 20 module entries
-//      */
-
-//     for (slot = 0; slot < pApplicationInstance_p->moduleCount; slot++)
-//     {
-//         char name[64];
-
-//         snprintf(name,
-//                  sizeof(name),
-//                  "%u",
-//                  pApplicationInstance_p->moduleList[slot].productCode);
-
-//         /*
-//          * Product Code stored here
-//          */
-
-//         error = (EC_API_EError_t)
-//             EC_API_SLV_CoE_configRecordSubIndex(
-//                 ptSubDevice,
-//                 pApplicationInstance_p->ptModuleType2400,
-//                 slot + 1,
-//                 name,
-//                 DEFTYPE_UNSIGNED32,
-//                 32,
-//                 ACCESS_READ);
-
-//         if (error != EC_API_eERR_NONE)
-//         {
-//             goto Exit;
-//         }
-//     }
-
-//     /* ========================================================= */
-//     /* 0x2500 - Module Status Table                              */
-//     /* ========================================================= */
-
-//     error = (EC_API_EError_t)
-//         EC_API_SLV_CoE_odAddRecord(
-//             ptSubDevice,
-//             0x2500,
-//             "Module Status Table",
-//             NULL,
-//             NULL,
-//             NULL,
-//             NULL,
-//             &pApplicationInstance_p->ptModuleStatus2500);
-
-//     if (error != EC_API_eERR_NONE)
-//     {
-//         OSAL_printf(
-//             "Create 0x2500 Error: 0x%08x\r\n",
-//             error);
-
-//         goto Exit;
-//     }
-
-//     for (slot = 0; slot < pApplicationInstance_p->moduleCount; slot++)
-//     {
-//         char name[64];
-
-//         snprintf(name,
-//                  sizeof(name),
-//                  "Slot %u Status",
-//                  slot + 1);
-
-//         /*
-//          * Example Status:
-//          *
-//          * 0x0000 = OK
-//          * 0x0001 = Module Missing
-//          * 0x0002 = Configuration Error
-//          * 0x0003 = Communication Error
-//          */
-
-//         error = (EC_API_EError_t)
-//             EC_API_SLV_CoE_configRecordSubIndex(
-//                 ptSubDevice,
-//                 pApplicationInstance_p->ptModuleStatus2500,
-//                 slot + 1,
-//                 name,
-//                 DEFTYPE_UNSIGNED16,
-//                 16,
-//                 ACCESS_READ);
-
-//         if (error != EC_API_eERR_NONE)
-//         {
-//             goto Exit;
-//         }
-//     }
-
-//     /* ========================================================= */
-//     /* 0x2600 - Diagnostic Information                           */
-//     /* ========================================================= */
-
-//     error = (EC_API_EError_t)
-//         EC_API_SLV_CoE_odAddRecord(
-//             ptSubDevice,
-//             0x2600,
-//             "Diagnostic Information",
-//             NULL,
-//             NULL,
-//             NULL,
-//             NULL,
-//             &pApplicationInstance_p->ptDiag2600);
-
-//     if (error != EC_API_eERR_NONE)
-//     {
-//         OSAL_printf(
-//             "Create 0x2600 Error: 0x%08x\r\n",
-//             error);
-
-//         goto Exit;
-//     }
-
-//     /*
-//      * Diagnostic Counter
-//      */
-
-//     error = (EC_API_EError_t)
-//         EC_API_SLV_CoE_configRecordSubIndex(
-//             ptSubDevice,
-//             pApplicationInstance_p->ptDiag2600,
-//             1,
-//             "Diagnostic Counter",
-//             DEFTYPE_UNSIGNED32,
-//             32,
-//             ACCESS_READ);
-
-//     if (error != EC_API_eERR_NONE)
-//     {
-//         goto Exit;
-//     }
-
-//     /*
-//      * Last Error Code
-//      */
-
-//     error = (EC_API_EError_t)
-//         EC_API_SLV_CoE_configRecordSubIndex(
-//             ptSubDevice,
-//             pApplicationInstance_p->ptDiag2600,
-//             2,
-//             "Last Error Code",
-//             DEFTYPE_UNSIGNED32,
-//             32,
-//             ACCESS_READ);
-
-//     if (error != EC_API_eERR_NONE)
-//     {
-//         goto Exit;
-//     }
-
-//     /*
-//      * System Warning Flags
-//      */
-
-//     error = (EC_API_EError_t)
-//         EC_API_SLV_CoE_configRecordSubIndex(
-//             ptSubDevice,
-//             pApplicationInstance_p->ptDiag2600,
-//             3,
-//             "Warning Flags",
-//             DEFTYPE_UNSIGNED32,
-//             32,
-//             ACCESS_READ);
-
-//     if (error != EC_API_eERR_NONE)
-//     {
-//         goto Exit;
-//     }
-
-//     /*
-//      * System Error Flags
-//      */
-
-//     error = (EC_API_EError_t)
-//         EC_API_SLV_CoE_configRecordSubIndex(
-//             ptSubDevice,
-//             pApplicationInstance_p->ptDiag2600,
-//             4,
-//             "Error Flags",
-//             DEFTYPE_UNSIGNED32,
-//             32,
-//             ACCESS_READ);
-
-//     if (error != EC_API_eERR_NONE)
-//     {
-//         goto Exit;
-//     }
-
-//     error = EC_API_eERR_NONE;
-
-// Exit:
-//     return error;
-// }
-
-static EC_API_EError_t GS_EC_SLV_APP_SS_populateRxPDO(
-    EC_SLV_APP_SS_Application_t *pApplicationInstance_p)
-{
-    EC_API_SLV_SHandle_t       *ptSubDevice;
-    EC_API_EError_t             error = EC_API_eERR_INVALID;
-    EC_API_SLV_SCoE_ObjEntry_t *ptObjEntry;
-
-    const uint16_t pdoIndex = 0x1600U;
-
-    char entryName[32];
-
-    if(pApplicationInstance_p == NULL)
-    {
-        goto Exit;
-    }
-
-    ptSubDevice = pApplicationInstance_p->ptEcSlvApi;
-
-    /* ===================================================== */
-    /* Create RxPDOs                                         */
-    /* ===================================================== */
-
-    for(uint8_t i = 0U; i < MAX_IO_DEVICES; i++)
-    {
-        uint16_t objIndex;
-        uint8_t  subIndex;
-
-        /*
-         * Create PDO
-         */
-        error = (EC_API_EError_t)
-            EC_API_SLV_PDO_create(
-                ptSubDevice,
-                "RxPDO",
-                (uint16_t)(pdoIndex + i),
-                &pApplicationInstance_p->ptRxPdo[i]);
-
-        if(error != EC_API_eERR_NONE)
-        {
-            OSAL_printf(
-                "Create RxPDO 0x%04X Error: 0x%08X\r\n",
-                (pdoIndex + i),
-                error);
-
-            goto Exit;
-        }
-
-        /*
-         * Application Object Index
-         */
-        objIndex = (uint16_t)(0x2300U + i);
-
-        /*
-         * Create PDO Entries
-         */
-        for(subIndex = 1U;
-            subIndex <= NUM_SUB_INDEX_DATA;
-            subIndex++)
-        {
-            error = (EC_API_EError_t)
-                EC_API_SLV_CoE_getObjectEntry(
-                    ptSubDevice,
-                    objIndex,
-                    subIndex,
-                    &ptObjEntry);
-
-            if(error != EC_API_eERR_NONE)
-            {
-                OSAL_printf(
-                    "Get Object 0x%04X:%u Error: 0x%08X\r\n",
-                    objIndex,
-                    subIndex,
-                    error);
-
-                goto Exit;
-            }
-
-            snprintf(
-                entryName,
-                sizeof(entryName),
-                "Slot %u Ch %u",
-                i + 1U,
-                subIndex);
-
-            error = (EC_API_EError_t)
-                EC_API_SLV_PDO_createEntry(
-                    ptSubDevice,
-                    pApplicationInstance_p->ptRxPdo[i],
-                    entryName,
-                    ptObjEntry);
-
-            if(error != EC_API_eERR_NONE)
-            {
-                OSAL_printf(
-                    "PDO Entry Slot %u Ch %u Error: 0x%08X\r\n",
-                    i + 1U,
-                    subIndex,
-                    error);
-
-                goto Exit;
-            }
-        }
-    }
-
-    error = EC_API_eERR_NONE;
-
-Exit:
-    return error;
-}
-
-static EC_API_EError_t GS_EC_SLV_APP_SS_populateTxPDO(
-    EC_SLV_APP_SS_Application_t *pApplicationInstance_p)
-{
-    EC_API_SLV_SHandle_t       *ptSubDevice;
-    EC_API_EError_t             error = EC_API_eERR_INVALID;
-    EC_API_SLV_SCoE_ObjEntry_t *ptObjEntry;
-
-    const uint16_t pdoIndex = 0x1A00U;
-
-    char entryName[32];
-
-    if(pApplicationInstance_p == NULL)
-    {
-        goto Exit;
-    }
-
-    ptSubDevice = pApplicationInstance_p->ptEcSlvApi;
-
-    /* ===================================================== */
-    /* Create TxPDOs                                         */
-    /* ===================================================== */
-
-    for(uint8_t i = 0U; i < MAX_IO_DEVICES; i++)
-    {
-        uint16_t objIndex;
-        uint8_t  subIndex;
-
-        /*
-         * Create PDO
-         */
-        error = (EC_API_EError_t)
-            EC_API_SLV_PDO_create(
-                ptSubDevice,
-                "TxPDO",
-                (uint16_t)(pdoIndex + i),
-                &pApplicationInstance_p->ptTxPdo[i]);
-
-        if(error != EC_API_eERR_NONE)
-        {
-            OSAL_printf(
-                "Create TxPDO 0x%04X Error: 0x%08X\r\n",
-                (pdoIndex + i),
-                error);
-
-            goto Exit;
-        }
-
-        /*
-         * Application Object Index
-         */
-        objIndex = (uint16_t)(0x2200U + i);
-
-        /*
-         * Create PDO Entries
-         */
-        for(subIndex = 1U;
-            subIndex <= NUM_SUB_INDEX_DATA;
-            subIndex++)
-        {
-            error = (EC_API_EError_t)
-                EC_API_SLV_CoE_getObjectEntry(
-                    ptSubDevice,
-                    objIndex,
-                    subIndex,
-                    &ptObjEntry);
-
-            if(error != EC_API_eERR_NONE)
-            {
-                OSAL_printf(
-                    "Get Object 0x%04X:%u Error: 0x%08X\r\n",
-                    objIndex,
-                    subIndex,
-                    error);
-
-                goto Exit;
-            }
-
-            snprintf(
-                entryName,
-                sizeof(entryName),
-                "Slot %u Ch %u",
-                i + 1U,
-                subIndex);
-
-            error = (EC_API_EError_t)
-                EC_API_SLV_PDO_createEntry(
-                    ptSubDevice,
-                    pApplicationInstance_p->ptTxPdo[i],
-                    entryName,
-                    ptObjEntry);
-
-            if(error != EC_API_eERR_NONE)
-            {
-                OSAL_printf(
-                    "PDO Entry Slot %u Ch %u Error: 0x%08X\r\n",
-                    i + 1U,
-                    subIndex,
-                    error);
-
-                goto Exit;
-            }
-        }
-    }
-
-    error = EC_API_eERR_NONE;
-
 Exit:
     return error;
 }
@@ -2188,18 +899,28 @@ static uint32_t EC_SLAVE_APP_mappingChangedHandler(
     if (pPdoMap_p != NULL)
     {
         uint8_t idx;
-        OSAL_printf("**************************************\r\n");
-        OSAL_printf("New mapping for PDO 0x%04x: \r\n", pdoIndex_p);
-        for (idx = 0; idx < count_p; idx++)
-        {
-            OSAL_printf("0x%04x:%d:0x%02x\r\n", pPdoMap_p[idx].index, pPdoMap_p[idx].subIndex,pPdoMap_p[idx].size );
-        }
-        OSAL_printf("**************************************\r\n");
+        // OSAL_printf("**************************************\r\n");
+        // OSAL_printf("New mapping for PDO 0x%04x: \r\n", pdoIndex_p);
+        // for (idx = 0; idx < count_p; idx++)
+        // {
+        //     OSAL_printf("0x%04x:%d:0x%02x\r\n", pPdoMap_p[idx].index, pPdoMap_p[idx].subIndex,pPdoMap_p[idx].size );
+        // }
+        // OSAL_printf("**************************************\r\n");
     }
     if (count_p == 0u)
     {
         error = EC_API_eERR_ABORT;
     }
+
+    /* MDP: validate that this PDO's new mapping matches the module ident
+       configured for the corresponding slot via 0xF030, and mark the
+       slot configured if so. Only takes effect for slots/PDOs we don't
+       already know are bad. */
+    if (error == EC_API_eERR_NONE)
+    {
+        error = MDP_OnMappingChanged(pdoIndex_p, count_p, pPdoMap_p);
+    }
+
     return error;
 }
 
@@ -2478,24 +1199,10 @@ void EC_SLV_APP_SS_applicationInit(EC_SLV_APP_SS_Application_t *pAppInstance_p)
     //////////  Generate application OBD                /////////
     /////////////////////////////////////////////////////////
 
-    /* Creation of Object Data */
-    error = GS_EC_SLV_APP_SS_populateIOObjects(pAppInstance_p);
-    if (error != EC_API_eERR_NONE)
-    {
-        OSAL_printf("Create IO Object Record Error code: 0x%08x\r\n", error);
-        /* @cppcheck_justify{misra-c2012-15.1} goto is used to assure single point of exit */
-        /* cppcheck-suppress misra-c2012-15.1 */
-        goto Exit;
-    }
-
-    // error = GS_EC_SLV_APP_SS_populateDiagnosticObjects(pAppInstance_p);
-    // if (error != EC_API_eERR_NONE)
-    // {
-    //     OSAL_printf("Create Diagnostic Object Error code: 0x%08x\r\n", error);
-    //     /* @cppcheck_justify{misra-c2012-15.1} goto is used to assure single point of exit */
-    //     /* cppcheck-suppress misra-c2012-15.1 */
-    //     goto Exit;
-    // }
+    // Initialize MDP and pass the stack handle to the HAL
+    HAL_Set_ptSubDevice(pAppInstance_p->ptEcSlvApi);
+    MDP_Init();
+    MDP_CreateObjects();
 
     error = EC_SLV_APP_populateFSoEObject(pAppInstance_p);
     if (error != EC_API_eERR_NONE)
@@ -2507,31 +1214,6 @@ void EC_SLV_APP_SS_applicationInit(EC_SLV_APP_SS_Application_t *pAppInstance_p)
     /////////////////////////////////////////////////////////
     //////////          Define Application PDOs         /////////
     /////////////////////////////////////////////////////////
-
-    /////////////////////////////////////
-    // Output PDO (master to SubDevice comm)
-    /////////////////////////////////////
-
-    error = GS_EC_SLV_APP_SS_populateRxPDO(pAppInstance_p);
-    if (error != EC_API_eERR_NONE)
-    {
-        OSAL_printf("Create RX PDO Error code: 0x%08x\r\n", error);
-        /* @cppcheck_justify{misra-c2012-15.1} goto is used to assure single point of exit */
-        /* cppcheck-suppress misra-c2012-15.1 */
-        goto Exit;
-    }
-
-    /////////////////////////////////////
-    // Input PDO (SubDevice to master comm)
-    /////////////////////////////////////
-    error = GS_EC_SLV_APP_SS_populateTxPDO(pAppInstance_p);
-    if (error != EC_API_eERR_NONE)
-    {
-        OSAL_printf("Create TX PDO Error code: 0x%08x\r\n", error);
-        /* @cppcheck_justify{misra-c2012-15.1} goto is used to assure single point of exit */
-        /* cppcheck-suppress misra-c2012-15.1 */
-        goto Exit;
-    }
 
     /*PDO Mapping Changes*/
     EC_API_SLV_PDO_registerAssignmentChanges(
@@ -2731,81 +1413,48 @@ static void EC_SLV_APP_SS_applicationRun(void *pAppCtxt_p)
             OSAL_printf("%s:%d:E=0x%x\r\n", __func__, __LINE__, error);
         }
 
-        if (curState != lastState)
-        {
-            OSAL_printf("State change: 0x%x -> 0x%x\r\n", lastState, curState);
+        // if (curState != lastState)
+        // {
+        //     OSAL_printf("State change: 0x%x -> 0x%x\r\n", lastState, curState);
+        //     pApplicationInstance->prev = ESL_OS_clockGet();
+        // }
+
+        if (curState != lastState) {
+            OSAL_printf( "State change: 0x%x -> 0x%x\r\n ", lastState, curState);
             pApplicationInstance->prev = ESL_OS_clockGet();
+            
+            MDP_Check_State(curState, lastState);
+
+            // --- MDP STATE MACHINE HOOKS ---
+            if (curState == EC_API_SLV_eESM_preop) {
+                MDP_OnEnterPreOP();
+            } else if (curState == EC_API_SLV_eESM_safeop) {
+                // Validate F030 vs F050
+                if (!MDP_ValidateAndConfigure()) {
+                    // Validation failed! Force back to PREOP with error code 0x0030
+                    OSAL_printf("MDP Validation Failed! Forcing back to PREOP.\r\n");
+                    
+                    // Use EC_API_SLV_setState to atomically reject and set error
+                    EC_API_SLV_setState(
+                        pApplicationInstance->ptEcSlvApi,
+                        EC_API_SLV_eESM_preop,
+                        AL_STATUS_MODULE_IDENT_MISMATCH  // 0x0030
+                    );
+                } else {
+                    OSAL_printf("Successfully entered SAFEOP.\r\n");
+                } 
+            } else if (curState == EC_API_SLV_eESM_op) {
+                MDP_OnEnterOP();
+            } else if (curState == EC_API_SLV_eESM_init) {
+                MDP_OnEnterInit();
+            }
         }
+
         lastState = curState;
 
         if (EC_API_SLV_eESM_op == curState)
         {
-            uint32_t pdOutLen;
-            uint32_t pdInLen;
-
-            EC_API_SLV_getOutputProcDataLength(
-                pApplicationInstance->ptEcSlvApi, &pdOutLen);
-
-            EC_API_SLV_getInputProcDataLength(
-                pApplicationInstance->ptEcSlvApi, &pdInLen);
-
-            pdOutLen = BIT2BYTE(pdOutLen);
-            pdInLen = BIT2BYTE(pdInLen);
-
-            app_ipc_sharemem_lock();            
-            error = EC_API_SLV_getOutputData(
-                pApplicationInstance->ptEcSlvApi,
-                pdOutLen,
-                (uint8_t *)gSharedMem.buff_out);
-            
-#if 0
-            uint16_t offset;
-            uint16_t pData;
-            if (EC_API_eERR_NONE == error)
-            {
-                error = EC_API_SLV_PDO_getOffset(
-                    pApplicationInstance->ptEcSlvApi,
-                    pApplicationInstance->ptRxPdo[0],
-                    &offset);
-
-                if ((EC_API_eERR_NONE == error) &&
-                    ((offset + 1U) < pdOutLen))
-                {
-                    pData =
-                        gSharedMem.buff_out[offset] |
-                        ((uint16_t)gSharedMem.buff_out[offset + 1U] << 8U);
-
-                    OSAL_printf("Offset = %u\r\n", offset);
-                    OSAL_printf("PData  = %u\r\n", pData);
-                }
-            }
-#endif
-            app_ipc_sharemem_unlock();
-
-            if (EC_API_eERR_NONE != error)
-            {
-                OSAL_printf(
-                    "%s:%d:E=0x%x\r\n",
-                    __func__,
-                    __LINE__,
-                    error);
-            }
-
-            app_ipc_sharemem_lock();
-            error = EC_API_SLV_setInputData(
-                pApplicationInstance->ptEcSlvApi,
-                pdInLen,
-                (uint8_t *)gSharedMem.buff_in);
-            app_ipc_sharemem_unlock();
-
-            if (EC_API_eERR_NONE != error)
-            {
-                OSAL_printf(
-                    "%s:%d:E=0x%x\r\n",
-                    __func__,
-                    __LINE__,
-                    error);
-            }
+            MDP_Cyclic(); 
         }
         else
         {

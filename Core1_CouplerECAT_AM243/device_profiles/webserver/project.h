@@ -48,7 +48,7 @@
 
 /* EtherCAT SubDevice configuration*/
 
-#define EC_MAX_PD_LEN                       512
+#define EC_MAX_PD_LEN                       1024
 #define EC_DEFAULT_PD_LEN                   256
 
 #define EC_REVISION                         0x00010000
@@ -118,6 +118,54 @@
     /* @cppcheck_justify{misra-c2012-11.6} void cast required for signature */ \
     /* cppcheck-suppress misra-c2012-11.6 */ \
     ((void*)0xEE11AA55u)
+
+
+/**
+ * @brief Modular Device Profile (MDP) driver for EtherCAT coupler.
+ * 
+ */
+#define MAX_SLOTS           MAX_IO_DEVICES      /* Maximum number of I/O slots          */
+#define MAX_SLOT_CHANNELS   NUM_SUB_INDEX_DATA  /* Maximum channels per slot             */
+
+/* CoE object base indices */
+#define OBJ_SLOT_DIG_INPUT_BASE   0x2200  /* Slot N digital input  = 0x2200+N (BOOL)   */
+#define OBJ_SLOT_DIG_OUTPUT_BASE  0x2300  /* Slot N digital output = 0x2300+N (BOOL)   */
+#define OBJ_SLOT_ANL_INPUT_BASE   0x2500  /* Slot N analog input   = 0x2500+N (UINT16) */
+#define OBJ_SLOT_ANL_OUTPUT_BASE  0x2400  /* Slot N analog output  = 0x2400+N (UINT16) */
+
+/* Module Ident values - must match ModuleIdent in ESI file */
+#define MODULE_IDENT_EMPTY  0x00000000
+#define MODULE_IDENT_DO16   0x20000001
+#define MODULE_IDENT_DI16   0x20000002
+#define MODULE_IDENT_AIC8   0x20000003
+#define MODULE_IDENT_AIV8   0x20000004
+#define MODULE_IDENT_AOC8   0x20000005
+#define MODULE_IDENT_AOV8   0x20000006
+#define MODULE_IDENT_RTDY   0x20000007  /* RTD PT100  */
+#define MODULE_IDENT_RTDB   0x20000008  /* RTD PT1000 */
+
+/* CoE Object indices */
+#define OBJ_F000            0xF000  /* Modular Device Profile               */
+#define OBJ_F008            0xF008  /* Code Word                            */
+#define OBJ_F010            0xF010  /* Module Profile List                  */
+#define OBJ_F030            0xF030  /* Configured Module Ident List         */
+#define OBJ_F050            0xF050  /* Detected Module Ident List           */
+#define OBJ_SLOT_INPUT_BASE 0x2200  /* Slot N input data  = 0x2200 + N     */
+#define OBJ_SLOT_OUTPUT_BASE 0x2300 /* Slot N output data = 0x2300 + N     */
+#define OBJ_RXPDO_BASE      0x1600  /* RxPDO mapping base index             */
+#define OBJ_TXPDO_BASE      0x1A00  /* TxPDO mapping base index             */
+
+/* EtherCAT AL state machine states */
+#define AL_STATE_INIT       0x01
+#define AL_STATE_PREOP      0x02
+#define AL_STATE_SAFEOP     0x04
+#define AL_STATE_OP         0x08
+
+/* AL Status Codes */
+#define AL_STATUS_NO_ERROR              0x0000
+#define AL_STATUS_MODULE_IDENT_MISMATCH 0x0030  /* ETG.5001 mismatch code  */
+#define AL_STATUS_INVALID_MODULE_CONFIG 0x002E
+
 
 #if (defined __cplusplus)
 extern "C" {

@@ -19,11 +19,13 @@
 // Device Information
 #define IO_DIGITAL_CHANNEL_NUM          (16)
 #define IO_ANALOG_CHANNEL_NUM           (8)
+#define IO_RTD_CHANNEL_NUM              (12)
 
 #define IO_ANALOG_BYTES_PER_CHANNEL      2
 
 #define IO_DIGITAL_MODULE_BYTESIZE  (2)
 #define IO_ANALOG_MODULE_BYTESIZE   (IO_ANALOG_CHANNEL_NUM*IO_ANALOG_BYTES_PER_CHANNEL)
+#define IO_RTD_MODULE_BYTESIZE      (IO_RTD_CHANNEL_NUM*IO_ANALOG_BYTES_PER_CHANNEL)
 
 #define MAX_INPUT_MODULES       (MAX_IO_DEVICES)
 #define MAX_OUTPUT_MODULES      (MAX_IO_DEVICES)
@@ -35,7 +37,7 @@
 #define GESPANT_HW_VER_SIZE (5)   //bytes char + null terminator
 #define GESPANT_FW_VER_SIZE (7)   //bytes
 
-#define NUM_SUB_INDEX_DATA  8U
+#define NUM_SUB_INDEX_DATA  16U
 /******************************************************************/
 #define DI_GET(v, ch)   (((v).d_all >> ((ch)-1)) & 0x01)
 #define DI_SET(v, ch)   ((v).d_all |=  (1U << ((ch)-1)))
@@ -246,6 +248,8 @@ typedef struct {
             ipc_system_t     ipc_sys;           //  512 Bytes
             uint8_t          buff_in[1024];     // 1024 Bytes
             uint8_t          buff_out[1024];    // 1024 Bytes
+            uint8_t          buff_ecat_in[1024];     // 1024 Bytes
+            uint8_t          buff_ecat_out[1024];    // 1024 Bytes
             IOCoupler_Device IOCoupler_Devices; // 2688 Bytes
         };
 

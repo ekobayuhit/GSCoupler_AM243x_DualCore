@@ -39,7 +39,7 @@
  *  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#if !(defined PROTECT_ECSSUBDEVICEWEBSERVER_H)
+#if !(defined PROTECT_ECSUBDEVICEWEBSERVER_H)
 #define PROTECT_ECSUBDEVICEWEBSERVER_H 1
 
 #include <osal.h>
@@ -53,208 +53,44 @@
 ------
 -----------------------------------------------------------------------------------------*/
 
-// typedef struct EC_SLV_APP_SS_application
-// {
-//     uint32_t                        selectedPruInstance;
-
-//     /* Threads */
-//     TaskP_Object                    mainThreadHandle;
-//     TaskP_Params                    mainThreadParam;
-//     void*                           loopThreadHandle;
-//     void*                           webServerThreadHandle;
-
-//     /* Resources */
-//     void*                           gpioHandle;
-//     void*                           remoteHandle;
-//     void*                           ioexpLedHandle;
-
-//     int32_t                         msec;
-//     int32_t                         trigger;
-
-//     uint8_t                         state;
-//     uint8_t                         rsvd[3]; /* better be uint32_t aligned */
-//     clock_t                         prev;
-//     clock_t                         diff;
-
-//     EC_API_SLV_SCoE_Object_t*       ptRecObjOut;
-//     EC_API_SLV_SCoE_Object_t*       pt2002RecObj;
-//     EC_API_SLV_SCoE_Object_t*       pt2007RecObj;
-//     EC_API_SLV_SCoE_Object_t*       pt200FRecObj;
-//     EC_API_SLV_SCoE_Object_t*       ptA000RecObj;
-//     EC_API_SLV_SCoE_Object_t*       pt0800EnumObj;
-
-//     EC_API_SLV_Pdo_t*               ptRxPdo1600;
-//     EC_API_SLV_Pdo_t*               ptRxPdo1601;
-//     EC_API_SLV_Pdo_t*               ptTxPdo1A00;
-//     EC_API_SLV_Pdo_t*               ptTxPdo1A01;
-
-//     EC_API_SLV_SHandle_t*           ptEcSlvApi;
-
-//     uint8_t                         pdBuffer[128];
-// } EC_SLV_APP_SS_Application_t;
-
-#define GS_MODULE_NAME_LENGTH      (32U)
-#define GS_DIAG_TEXT_LENGTH        (96U)
-
-#define IO_ANALOG_MODULE_BITS   (128U)
-#define IO_DIGITAL_MODULE_BITS  (16U)
-
-/* Module diagnostic state */
-typedef enum
-{
-    GS_MODULE_STATE_OK = 0,
-    GS_MODULE_STATE_WARNING,
-    GS_MODULE_STATE_ERROR,
-    GS_MODULE_STATE_OFFLINE
-} GS_ModuleState_e;
-
-/* Module information for web UI / diagnostics / object dictionary */
-typedef struct GS_ModuleInfo
-{
-    uint16_t            productCode;
-    uint16_t            slot;
-
-    char                moduleName[GS_MODULE_NAME_LENGTH];
-
-    uint8_t             inputSize;
-    uint8_t             outputSize;
-
-    uint16_t            txPdoOffset;
-    uint16_t            txPdoLength;
-
-    uint16_t            rxPdoOffset;
-    uint16_t            rxPdoLength;
-
-    GS_ModuleState_e    state;
-
-    uint16_t            errorCode;
-
-    char                diagnosticText[GS_DIAG_TEXT_LENGTH];
-
-    bool                modulePresent;
-} GS_ModuleInfo_t;
-
-/* System diagnostic summary */
-typedef struct GS_SystemDiagnostic
-{
-    uint16_t totalModules;
-    uint16_t onlineModules;
-    uint16_t errorModules;
-    uint16_t warningModules;
-
-    bool     systemError;
-} GS_SystemDiagnostic_t;
-
 typedef struct EC_SLV_APP_SS_application
 {
     uint32_t                        selectedPruInstance;
 
-    /************************************************************/
-    /* Threads                                                  */
-    /************************************************************/
+    /* Threads */
     TaskP_Object                    mainThreadHandle;
     TaskP_Params                    mainThreadParam;
-
     void*                           loopThreadHandle;
     void*                           webServerThreadHandle;
 
-    /************************************************************/
-    /* Resources                                                */
-    /************************************************************/
+    /* Resources */
     void*                           gpioHandle;
     void*                           remoteHandle;
     void*                           ioexpLedHandle;
 
-    /************************************************************/
-    /* Runtime                                                  */
-    /************************************************************/
     int32_t                         msec;
     int32_t                         trigger;
 
     uint8_t                         state;
-    uint8_t                         rsvd[3];
-
+    uint8_t                         rsvd[3]; /* better be uint32_t aligned */
     clock_t                         prev;
     clock_t                         diff;
-    
-    /************************************************************/
-    /* EtherCAT Object Dictionary                               */
-    /************************************************************/
 
+    EC_API_SLV_SCoE_Object_t*       ptRecObjOut;
+    EC_API_SLV_SCoE_Object_t*       pt2002RecObj;
+    EC_API_SLV_SCoE_Object_t*       pt2007RecObj;
+    EC_API_SLV_SCoE_Object_t*       pt200FRecObj;
     EC_API_SLV_SCoE_Object_t*       ptA000RecObj;
     EC_API_SLV_SCoE_Object_t*       pt0800EnumObj;
 
-    // /*
-    //  * 0x2100 : Coupler Information
-    //  */
-    // EC_API_SLV_SCoE_Object_t*       ptCoupler2100;
+    EC_API_SLV_Pdo_t*               ptRxPdo1600;
+    EC_API_SLV_Pdo_t*               ptRxPdo1601;
+    EC_API_SLV_Pdo_t*               ptTxPdo1A00;
+    EC_API_SLV_Pdo_t*               ptTxPdo1A01;
 
-    /*
-     * 0x2200 : Input Process Data
-     */
-    EC_API_SLV_SCoE_Object_t*       ptInput[MAX_IO_DEVICES];
-
-    /*
-     * 0x2300 : Output Process Data
-     */
-    EC_API_SLV_SCoE_Object_t*       ptOutput[MAX_IO_DEVICES];
-
-    // /*
-    //  * 0x2400 : Module Type Table
-    //  */
-    // EC_API_SLV_SCoE_Object_t*       ptModuleType2400;
-
-    // /*
-    //  * 0x2500 : Module Status Table
-    //  */
-    // EC_API_SLV_SCoE_Object_t*       ptModuleStatus2500;
-
-    // /*
-    //  * 0x2600 : Diagnostic Information
-    //  */
-    // EC_API_SLV_SCoE_Object_t*       ptDiag2600;
-
-    // /*
-    // * 0x3000 + slot : Module Runtime Information
-    // *
-    // * SubIndex:
-    // * 1 -> Module ID
-    // * 2 -> State
-    // * 3 -> Error Code
-    // * 4 -> TX PDO Offset
-    // * 5 -> TX PDO Length
-    // * 6 -> RX PDO Offset
-    // * 7 -> RX PDO Length
-    // */
-    // EC_API_SLV_SCoE_Object_t*       ptModuleInfo3000[MAX_IO_DEVICES];
-
-    /************************************************************/
-    /* PDO Handles                                              */
-    /************************************************************/
-    EC_API_SLV_Pdo_t*               ptRxPdo[MAX_IO_DEVICES];
-
-    EC_API_SLV_Pdo_t*               ptTxPdo[MAX_IO_DEVICES];
-    /************************************************************/
-    /* EtherCAT Slave API                                       */
-    /************************************************************/
     EC_API_SLV_SHandle_t*           ptEcSlvApi;
 
-    /************************************************************/
-    /* Modular IO Information                                   */
-    /************************************************************/
-    uint16_t                        moduleCount;
-
-    GS_ModuleInfo_t                 moduleList[MAX_IO_DEVICES];
-
-    GS_SystemDiagnostic_t           systemDiag;
-
-    /************************************************************/
-    /* Webserver / UI State                                     */
-    /************************************************************/
-    // bool                            webDataUpdated;
-    // bool                            diagnosticChanged;
-
-    // uint32_t                        lastDiagnosticUpdateMs;
+    uint8_t                         pdBuffer[128];
 } EC_SLV_APP_SS_Application_t;
 
 #if (defined __cplusplus)
